@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0b0e" media="(prefers-color-scheme: dark)">
+<title>账号安全 - {{BRAND}}</title>
+<link rel="stylesheet" href="/theme.css">
+<script src="/theme.js"></script>
+<style>
+.settings-hero{display:flex;align-items:center;gap:16px;margin-bottom:16px}
+.settings-hero .icon{display:flex;align-items:center;justify-content:center;width:54px;height:54px;flex:none;border:1px solid var(--info-bd);border-radius:50%;background:var(--info-bg);font-size:26px}
+.settings-hero h1{font-size:22px;letter-spacing:-.4px;line-height:1.3}
+.settings-hero p{margin-top:3px;color:var(--txt3);font-size:12px;line-height:1.6}
+.settings-stack{display:flex;flex-direction:column;gap:14px}
+.section-title{font-size:18px;letter-spacing:-.25px;line-height:1.35}
+.section-desc{margin-top:5px;color:var(--txt3);font-size:13px;line-height:1.65}
+.section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;margin-top:16px}
+.form-grid .field:first-child{grid-column:1/-1}
+.form-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px}
+.form-msg{min-height:18px;margin-top:9px}
+.code-list{display:none;margin-top:12px;padding:14px 16px;border:1px solid var(--bd);border-radius:var(--r-md);background:var(--in);color:var(--txt);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:14px;line-height:1.9;white-space:pre-wrap;word-break:break-all}
+.code-list.show{display:block}
+.copy-row{display:none;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
+.copy-row.show{display:flex}
+.danger-zone{border-color:var(--err-bd);box-shadow:0 18px 44px rgba(215,0,21,.06)}
+.danger-zone .section-title{color:var(--danger-text)}
+@media(max-width:600px){
+  .settings-hero{align-items:flex-start;padding:20px}
+  .settings-hero .icon{width:46px;height:46px;font-size:22px}
+  .settings-hero h1{font-size:19px}
+  .form-grid{grid-template-columns:1fr}
+  .form-grid .field:first-child{grid-column:auto}
+  .section-head{flex-direction:column;gap:8px}
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="{{BRAND}} 首页">
+      <img class="brand-avatar" src="/avatar.svg" alt="">
+      <span class="brand-text">
+        <span class="brand-name">{{BRAND}}</span>
+        <span class="brand-sub">账号安全</span>
+      </span>
+    </a>
+    <div class="topbar-actions">
+      <a class="btn btn-ghost btn-sm" href="/my">← 我的页面</a>
+      <button class="icon-btn" id="tt" type="button" aria-label="切换深色模式"><span id="ti">🌙</span></button>
+    </div>
+  </header>
+
+  <main class="settings-stack">
+    <section class="card settings-hero">
+      <div class="icon" aria-hidden="true">🛡️</div>
+      <div>
+        <h1>账号安全</h1>
+        <p>管理密码、恢复码与登录会话。当前账号：<strong id="who">加载中...</strong></p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">修改密码</h2>
+      <p class="section-desc">修改后所有旧会话会立即失效，当前设备会自动保持登录；已有恢复码也会失效，请重新生成。</p>
+      <div class="form-grid">
+        <div class="field"><label for="oldPw">当前密码</label><input class="input" id="oldPw" type="password" autocomplete="current-password" placeholder="请输入当前密码"></div>
+        <div class="field"><label for="newPw">新密码</label><input class="input" id="newPw" type="password" autocomplete="new-password" placeholder="至少 6 位"></div>
+        <div class="field"><label for="newPw2">确认新密码</label><input class="input" id="newPw2" type="password" autocomplete="new-password" placeholder="再次输入新密码"></div>
+      </div>
+      <div class="form-actions"><button class="btn btn-primary" id="pwBtn" type="button">更新密码</button></div>
+      <p class="hint form-msg" id="pwMsg" role="status"></p>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <div>
+          <h2 class="section-title">恢复码</h2>
+          <p class="section-desc">忘记密码时，用其中一个恢复码重置密码。生成新的恢复码会使旧恢复码全部失效。</p>
+        </div>
+        <span class="badge" id="rcCount">未生成</span>
+      </div>
+      <div class="field" style="margin-top:16px"><label for="rcPw">当前密码（确认身份）</label><input class="input" id="rcPw" type="password" autocomplete="current-password" placeholder="请输入当前密码"></div>
+      <div class="form-actions"><button class="btn btn-ghost" id="rcBtn" type="button">生成新的恢复码</button></div>
+      <pre class="code-list" id="rcList" aria-label="恢复码列表"></pre>
+      <div class="copy-row" id="rcCopyRow"><button class="btn btn-ghost btn-sm" id="rcCopy" type="button">复制全部恢复码</button><span class="hint">只显示这一次，请妥善保存。</span></div>
+      <p class="hint form-msg" id="rcMsg" role="status"></p>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">登录会话</h2>
+      <p class="section-desc">如果怀疑密码或 Cookie 泄露，退出所有设备会立即吊销全部现有会话，包括当前设备。</p>
+      <div class="form-actions" style="margin-top:16px"><button class="btn btn-danger" id="logoutAllBtn" type="button">退出所有设备</button></div>
+      <p class="hint form-msg" id="sessionMsg" role="status"></p>
+    </section>
+
+    <section class="card danger-zone">
+      <h2 class="section-title">注销账号</h2>
+      <p class="section-desc">永久删除账号和你的全部页面。共享正文只有在没有其他页面引用时才会回收，此操作不可恢复。</p>
+      <div class="form-grid">
+        <div class="field"><label for="delPw">当前密码</label><input class="input" id="delPw" type="password" autocomplete="current-password" placeholder="请输入当前密码"></div>
+        <div class="field"><label for="delName">输入用户名确认</label><input class="input" id="delName" autocomplete="off" spellcheck="false" placeholder="请输入完整用户名"></div>
+      </div>
+      <div class="form-actions"><button class="btn btn-danger-solid" id="delBtn" type="button">永久注销账号</button></div>
+      <p class="hint form-msg" id="delMsg" role="status"></p>
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+(function(){
+function $(id){return document.getElementById(id)}
+function toast(msg,tone){
+  var t=$("toast");t.textContent=msg;t.className="toast show"+(tone?" "+tone:"");
+  setTimeout(function(){t.className="toast"+(tone?" "+tone:"")},2400);
+}
+function msg(el,text,ok){el.textContent=text;el.className="hint form-msg "+(ok?"ok":"et")}
+function post(url,data){
+  return fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)}).then(function(r){return r.json()});
+}
+function copyText(text){
+  if(navigator.clipboard&&navigator.clipboard.writeText)return navigator.clipboard.writeText(text);
+  var ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.opacity="0";
+  document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);
+  return Promise.resolve();
+}
+fetch("/api/me").then(function(r){return r.json()}).then(function(d){
+  if(!d.success){location.href="/login";return}
+  $("who").textContent=d.user.username;
+  if(d.user.recoveryCodeCount)$("rcCount").textContent="已生成 "+d.user.recoveryCodeCount+" 个";
+}).catch(function(){location.href="/login"});
+
+$("pwBtn").addEventListener("click",async function(){
+  var oldPw=$("oldPw").value,newPw=$("newPw").value,newPw2=$("newPw2").value;
+  if(!oldPw||!newPw){msg($("pwMsg"),"请填写当前密码和新密码",false);return}
+  if(newPw.length<6){msg($("pwMsg"),"新密码至少 6 位",false);return}
+  if(newPw!==newPw2){msg($("pwMsg"),"两次输入的新密码不一致",false);return}
+  var btn=this;btn.disabled=true;var old=btn.textContent;btn.textContent="更新中...";
+  try{
+    var d=await post("/api/password",{oldPassword:oldPw,newPassword:newPw});
+    if(d.success){msg($("pwMsg"),"密码已更新，旧会话和恢复码已失效",true);$("oldPw").value="";$("newPw").value="";$("newPw2").value="";$("rcCount").textContent="未生成";$("rcList").classList.remove("show");$("rcCopyRow").classList.remove("show");toast("密码已更新","success")}
+    else msg($("pwMsg"),d.error||"修改失败",false);
+  }catch(e){msg($("pwMsg"),"网络错误，请重试",false)}
+  finally{btn.disabled=false;btn.textContent=old}
+});
+
+$("rcBtn").addEventListener("click",async function(){
+  var pw=$("rcPw").value;
+  if(!pw){msg($("rcMsg"),"请输入当前密码",false);return}
+  var btn=this;btn.disabled=true;var old=btn.textContent;btn.textContent="生成中...";
+  try{
+    var d=await post("/api/recovery-codes",{password:pw});
+    if(d.success){
+      $("rcList").textContent=d.codes.join("\n");$("rcList").classList.add("show");
+      $("rcCopyRow").classList.add("show");$("rcCount").textContent="已生成 "+d.codes.length+" 个";
+      msg($("rcMsg"),"恢复码已生成，请立即保存",true);$("rcPw").value="";
+    }else msg($("rcMsg"),d.error||"生成失败",false);
+  }catch(e){msg($("rcMsg"),"网络错误，请重试",false)}
+  finally{btn.disabled=false;btn.textContent=old}
+});
+
+$("rcCopy").addEventListener("click",function(){
+  copyText($("rcList").textContent).then(function(){toast("已复制恢复码","success")}).catch(function(){toast("复制失败，请手动选择","error")});
+});
+
+$("logoutAllBtn").addEventListener("click",async function(){
+  if(!confirm("确定退出所有设备？当前设备也会退出登录。"))return;
+  var btn=this;btn.disabled=true;var old=btn.textContent;btn.textContent="退出中...";
+  try{
+    var d=await post("/api/logout-all",{});
+    if(d.success)location.href="/login";
+    else msg($("sessionMsg"),d.error||"操作失败",false);
+  }catch(e){msg($("sessionMsg"),"网络错误，请重试",false)}
+  finally{btn.disabled=false;btn.textContent=old}
+});
+
+$("delBtn").addEventListener("click",async function(){
+  var pw=$("delPw").value,name=$("delName").value.trim();
+  if(!pw||!name){msg($("delMsg"),"请输入密码和用户名",false);return}
+  if(!confirm("确定永久注销账号？账号和所有页面都会被删除，无法恢复。"))return;
+  var btn=this;btn.disabled=true;var old=btn.textContent;btn.textContent="注销中...";
+  try{
+    var d=await post("/api/account/delete",{password:pw,confirmUsername:name});
+    if(d.success)location.href="/";
+    else msg($("delMsg"),d.error||"注销失败",false);
+  }catch(e){msg($("delMsg"),"网络错误，请重试",false)}
+  finally{btn.disabled=false;btn.textContent=old}
+});
+})();
+</script>
+</body>
+</html>

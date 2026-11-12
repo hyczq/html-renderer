@@ -102,6 +102,8 @@ const templates = {
   edit: fs.readFileSync(path.join(PUBLIC_DIR, 'edit.html'), 'utf8'),
   login: fs.readFileSync(path.join(PUBLIC_DIR, 'login.html'), 'utf8'),
   my: fs.readFileSync(path.join(PUBLIC_DIR, 'my.html'), 'utf8'),
+  settings: fs.readFileSync(path.join(PUBLIC_DIR, 'settings.html'), 'utf8'),
+  recover: fs.readFileSync(path.join(PUBLIC_DIR, 'recover.html'), 'utf8'),
   notFound: fs.readFileSync(path.join(PUBLIC_DIR, '404.html'), 'utf8'),
 };
 const avatarSvg = fs.readFileSync(path.join(PUBLIC_DIR, 'avatar.svg'), 'utf8');

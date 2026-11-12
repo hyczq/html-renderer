@@ -13,11 +13,11 @@
 - **文件即数据**：页面、用户、索引全部是 JSON/HTML 文件；备份就是打包 `data/`，迁移就是复制目录。
 - **内容级去重**：按 SHA-256 存储正文，多用户相同 HTML 只保留一份，链接与编辑密钥仍各自独立。
 - **自托管可控**：数据完全留在自己的服务器；Docker Compose 一条命令启动，也可直接 `node server.js` 运行。
-- **安全默认**：预览页独立域名隔离（可配置）、CSP sandbox 兜底、SSRF 防护、按 IP 限流、scrypt 密码哈希、HMAC 签名 Cookie、原子写与串行化写锁。
+- **安全默认**：预览页独立域名隔离（可配置）、CSP sandbox 兜底、SSRF 防护、按 IP 限流、scrypt 密码哈希、HMAC 签名 Cookie、`sessionEpoch` 会话吊销、恢复码找回、原子写与串行化写锁。
 - **移动端友好**：响应式布局、刘海屏安全区域、触控尺寸与输入防缩放，文本响应 gzip 压缩省流量。
 - **统一视觉**：首页、我的页面、登录与编辑页共享 `public/theme.css` 设计令牌与组件（顶栏 / 卡片 / 按钮 / 表单），布局不再各自分叉。
 - **完整体验**：深色模式、编辑链接、我的页面、搜索/筛选/分页与快捷键。
-- **可验证**：24 项测试覆盖核心流程、预览隔离、Cookie 安全、SSRF 边界、索引重建与 blob 回收，CI 在 Node 18/20/22/24 上回归。
+- **可验证**：29 项测试覆盖核心流程、预览隔离、Cookie 安全、SSRF 边界、索引重建、blob 回收与账号安全，CI 在 Node 18/20/22/24 上回归。
 
 ## 功能
 
@@ -31,6 +31,7 @@
 | 🧭 404 页面 | 不存在的链接返回与全站一致的样式化提示，支持返回首页 / 上一页 |
 | ✏️ 编辑链接 | `GET /edit/<code>#key=<editKey>`，凭密钥读取/保存（查询参数 `?key=` 仍兼容） |
 | 👤 注册/登录 | 用户名 + 密码，scrypt 哈希，30 天签名 Cookie 会话 |
+| 🛡️ 账号安全 | 修改密码、退出所有设备、一次性恢复码找回、注销账号并删除页面 |
 | 📁 我的页面 | 登录后 `/my` 查看全部历史链接，支持搜索、复制、编辑、删除 |
 | 🏷️ 页面命名 | 生成时可填名称（留空自动取 HTML `<title>` / URL 域名），之后可随时重命名 |
 | ♻️ SHA-256 去重 | 同一用户相同内容直接复用原链接，不重复建记录 |
@@ -164,14 +165,19 @@ data/
 | POST | `/api/save` | `{"code":"...","key":"...","html":"...","name":"可选"}` | 保存内容/名称 |
 | POST | `/api/register` | `{"username":"...","password":"..."}` | 注册并登录 |
 | POST | `/api/login` | 同上 | 登录 |
-| POST | `/api/logout` | — | 退出 |
+| POST | `/api/logout` | — | 退出当前设备 |
+| POST | `/api/password` | `{"oldPassword":"...","newPassword":"..."}` | 修改密码并吊销旧会话 |
+| POST | `/api/logout-all` | — | 退出所有设备，吊销全部会话 |
+| POST | `/api/recovery-codes` | `{"password":"..."}` | 生成 10 个一次性恢复码 |
+| POST | `/api/recover` | `{"username":"...","code":"...","newPassword":"..."}` | 用恢复码重置密码并登录 |
+| POST | `/api/account/delete` | `{"password":"...","confirmUsername":"..."}` | 注销账号并删除页面 |
 | GET | `/api/me` | — | 当前用户 |
 | GET | `/api/my?offset=&limit=` | — | `{total, stats, items:[{code,editKey,size,createdAt,...}]}` |
 | POST | `/api/delete` | `{"code":"..."}` | 删除自己的记录 |
 | POST | `/api/rename` | `{"code":"...","name":"...","key":"可选"}` | 重命名（登录所有者或持 key 均可） |
 | GET | `/healthz` | — | `ok` |
 
-页面路由：`GET /`（首页）、`GET /login`（登录/注册）、`GET /my`（我的页面）。
+页面路由：`GET /`（首页）、`GET /login`（登录/注册）、`GET /my`（我的页面）、`GET /settings`（账号安全）、`GET /recover`（恢复码找回）。
 
 ## 快捷操作
 
@@ -193,14 +199,15 @@ src/
   http.js                 # 请求体读取、JSON/文本/HTML 响应、异步 gzip
   rate-limit.js           # 进程内滑动窗口限流
   store.js                # 文件存储、内存索引、blob 引用计数、原子写/写锁
-  auth.js                 # scrypt 密码、签名 Cookie 会话
+  auth.js                 # scrypt 密码、sessionEpoch 会话、恢复码
   fetch-html.js           # 远程 URL 抓取：DNS 固定、SSRF 防护、端口白名单
   handlers.js             # 业务处理器（生成/读取/保存/重命名/删除等）
   app.js                  # 路由、CSP、预览 ETag/304
   bootstrap.js            # 建目录、密钥、旧数据迁移
-public/                   # index / edit / login / my / 404 页面、theme.css/theme.js 与 avatar.svg
+public/                   # index / edit / login / my / settings / recover / 404 页面、theme.css/theme.js 与 avatar.svg
 test/api.test.js          # 端到端冒烟测试（node:test）
 scripts/doctor.js         # 数据自检：缺失 blob / hash 不一致 / 孤儿 blob
+scripts/reset-password.js # 管理员重置密码并吊销会话
 Dockerfile
 docker-compose.yml
 deploy.sh                 # tar over ssh 部署脚本（需自行设置 HOST）
@@ -217,9 +224,10 @@ CODE_OF_CONDUCT.md
 npm test
 npm run doctor             # 数据自检（只读）
 npm run doctor -- --fix-orphans  # 索引加载无错误时清理孤儿 blob
+npm run reset-password -- <username> <newPassword>  # 管理员重置密码并吊销会话
 ```
 
-测试会启动真实 HTTP 服务并使用临时数据目录，覆盖：健康检查、gzip 压缩、匿名/登录生成、预览、读取、保存、去重、并发去重、注册登录、我的页面、重命名、删除、SSRF 拦截、IPv6 私网边界、端口白名单、重启索引重建、blob 引用计数/回收、旧数据迁移。CI 在 Node 18/20/22/24 上运行。
+测试会启动真实 HTTP 服务并使用临时数据目录，覆盖：健康检查、gzip 压缩、匿名/登录生成、预览、读取、保存、去重、并发去重、注册登录、我的页面、重命名、删除、SSRF 拦截、IPv6 私网边界、端口白名单、重启索引重建、blob 引用计数/回收、旧数据迁移、改密/退出所有设备/恢复码/注销账号。CI 在 Node 18/20/22/24 上运行。
 
 ## 部署脚本
 
@@ -240,7 +248,8 @@ HOST=root@your-server ./deploy.sh
 
 其他要点：
 
-- 密码使用 `crypto.scrypt`（N=16384）加盐哈希，会话 Cookie 为 `HttpOnly; SameSite=Lax`，HTTPS 下自动加 `Secure` 并使用 `__Host-` 前缀（host-only，降低子域 Cookie 注入风险）。
+- 密码使用 `crypto.scrypt`（N=16384）加盐哈希，会话 Cookie 为 `HttpOnly; SameSite=Lax`，HTTPS 下自动加 `Secure` 并使用 `__Host-` 前缀（host-only，降低子域 Cookie 注入风险）。改密、退出所有设备、恢复码重置都会递增 `sessionEpoch`，已有 token 立即失效；改密和管理员重置还会清空旧恢复码。
+- 恢复码在「账号安全」页面生成，只显示一次；每个恢复码只能使用一次。没有恢复码时，管理员可用 `npm run reset-password -- <username> <newPassword>` 重置并吊销旧会话。
 - 编辑密钥等同密码；匿名用户丢失后无法找回，登录用户可在「我的页面」查看。code 为 8 位、editKey 为 16 位，均由加密随机数生成。
 - URL 抓取做 SSRF 防护：DNS 只解析一次并固定到已校验 IP（防 DNS 重绑定），拦截 IPv4/IPv6 私网、回环、链路本地、元数据、NAT64、6to4、Teredo 等地址；默认只允许 80/443 端口，逐跳复验重定向，最多 5 跳、12 秒超时、2 MB；可用 `URL_FETCH_ENABLED=0` 完全关闭。
 - 按 IP 限流：生成（登录 200 次/小时、匿名 60 次/小时）、保存 300 次/小时、登录注册 30 次/15 分钟。

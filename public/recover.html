@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0b0e" media="(prefers-color-scheme: dark)">
+<title>找回密码 - {{BRAND}}</title>
+<link rel="stylesheet" href="/theme.css">
+<script src="/theme.js"></script>
+<style>
+.auth-wrap{display:flex;justify-content:center;align-items:flex-start;min-height:calc(100dvh - 90px)}
+.auth-card{width:100%;max-width:520px}
+.auth-title{font-size:23px;letter-spacing:-.4px;line-height:1.3}
+.auth-sub{margin-top:6px;color:var(--txt3);font-size:13px;line-height:1.7}
+.auth-form{margin-top:20px}
+.auth-actions{margin-top:4px}
+.auth-links{margin-top:18px;text-align:center;color:var(--txt3);font-size:12px;line-height:1.8}
+.auth-links a{font-weight:600}
+@media(max-width:600px){.auth-card{padding:22px 18px}.auth-title{font-size:20px}}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="{{BRAND}} 首页">
+      <img class="brand-avatar" src="/avatar.svg" alt="">
+      <span class="brand-text">
+        <span class="brand-name">{{BRAND}}</span>
+        <span class="brand-sub">找回密码</span>
+      </span>
+    </a>
+    <div class="topbar-actions">
+      <a class="btn btn-ghost btn-sm" href="/login">← 返回登录</a>
+      <button class="icon-btn" id="tt" type="button" aria-label="切换深色模式"><span id="ti">🌙</span></button>
+    </div>
+  </header>
+
+  <div class="auth-wrap">
+    <main class="card auth-card">
+      <h1 class="auth-title">使用恢复码重置密码</h1>
+      <p class="auth-sub">恢复码在「账号安全」页面生成，每个只能使用一次。重置后所有旧会话会立即失效。</p>
+      <form class="auth-form" id="form" autocomplete="off">
+        <div class="field"><label for="username">用户名</label><input class="input" id="username" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="请输入用户名"></div>
+        <div class="field"><label for="code">恢复码</label><input class="input" id="code" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" placeholder="例如：ABCD-EFGH-IJKL-MNOP"></div>
+        <div class="field"><label for="newPw">新密码</label><input class="input" id="newPw" type="password" autocomplete="new-password" placeholder="至少 6 位"></div>
+        <div class="field"><label for="newPw2">确认新密码</label><input class="input" id="newPw2" type="password" autocomplete="new-password" placeholder="再次输入新密码"></div>
+        <button class="btn btn-primary btn-block" id="go" type="submit">重置密码并登录</button>
+      </form>
+      <div class="notice error" id="msg" role="status" aria-live="polite" style="display:none;margin-top:12px"></div>
+      <p class="auth-links">没有恢复码？请联系实例管理员，使用 <code>npm run reset-password</code> 重置。<br><a href="/login">返回登录</a></p>
+    </main>
+  </div>
+</div>
+<script>
+(function(){
+var form=document.getElementById("form"),go=document.getElementById("go"),msg=document.getElementById("msg");
+function show(text){
+  msg.style.display="block";msg.textContent=text;
+}
+form.addEventListener("submit",async function(e){
+  e.preventDefault();
+  var username=document.getElementById("username").value.trim();
+  var code=document.getElementById("code").value.trim();
+  var newPw=document.getElementById("newPw").value;
+  var newPw2=document.getElementById("newPw2").value;
+  if(!username||!code){show("请输入用户名和恢复码");return}
+  if(newPw.length<6){show("新密码至少 6 位");return}
+  if(newPw!==newPw2){show("两次输入的新密码不一致");return}
+  go.disabled=true;var old=go.textContent;go.textContent="重置中...";
+  try{
+    var r=await fetch("/api/recover",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:username,code:code,newPassword:newPw})});
+    var d=await r.json();
+    if(d.success){location.href="/my";return}
+    show(d.error||"恢复码无效或已使用");
+  }catch(err){show("网络错误，请重试")}
+  finally{go.disabled=false;go.textContent=old}
+});
+})();
+</script>
+</body>
+</html>

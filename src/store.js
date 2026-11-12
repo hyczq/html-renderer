@@ -425,6 +425,14 @@ async function writeUser(user) {
   await writeJsonAtomic(userFile(user.id), user);
 }
 
+async function deleteUserFile(userId) {
+  await fsp.rm(userFile(userId), { force: true });
+}
+
+async function deleteUserPastesIndex(userId) {
+  await fsp.rm(path.join(config.USER_PASTE_DIR, userId + '.json'), { force: true });
+}
+
 async function readUsersIndex() {
   return readJsonFile(config.USERS_INDEX, {});
 }
@@ -468,6 +476,8 @@ module.exports = {
   listOrphanBlobs,
   readUserById,
   writeUser,
+  deleteUserFile,
+  deleteUserPastesIndex,
   readUsersIndex,
   writeUsersIndex,
   readUserByName,

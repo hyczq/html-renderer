@@ -44,7 +44,7 @@ async function handleRegister(req, res) {
   }
   try {
     const user = await auth.createUser(username, password);
-    res.setHeader('Set-Cookie', auth.sessionCookie(req, auth.issueSession(user.id)));
+    res.setHeader('Set-Cookie', auth.sessionCookie(req, auth.issueSession(user.id, user.sessionEpoch || 0)));
     return sendJson(res, { success: true, user: auth.publicUser(user) });
   } catch (e) {
     return sendJson(res, { success: false, error: e.message || '注册失败' });
@@ -67,7 +67,7 @@ async function handleLogin(req, res) {
   if (!(await auth.verifyUserPassword(user, password))) {
     return sendJson(res, { success: false, error: '用户名或密码错误' });
   }
-  res.setHeader('Set-Cookie', auth.sessionCookie(req, auth.issueSession(user.id)));
+  res.setHeader('Set-Cookie', auth.sessionCookie(req, auth.issueSession(user.id, user.sessionEpoch || 0)));
   return sendJson(res, { success: true, user: auth.publicUser(user) });
 }
 
@@ -75,6 +75,139 @@ async function handleMe(req, res) {
   const user = await auth.currentUser(req);
   if (!user) return sendJson(res, { success: false, error: '未登录', needLogin: true });
   return sendJson(res, { success: true, user: auth.publicUser(user) });
+}
+
+async function handleChangePassword(req, res, user) {
+  if (!user) return sendJson(res, { success: false, error: '未登录', needLogin: true });
+  if (rateLimited(req, 'password', 10, 60 * 60 * 1000)) {
+    return sendJson(res, { success: false, error: '操作太频繁，请稍后再试' });
+  }
+  let body;
+  try {
+    body = await readJson(req);
+  } catch (e) {
+    return sendBodyError(res, req, e);
+  }
+  const oldPassword = String(body.oldPassword || '');
+  const newPassword = String(body.newPassword || '');
+  if (newPassword.length < 6 || newPassword.length > 128) {
+    return sendJson(res, { success: false, error: '新密码长度需 6-128 位' });
+  }
+  if (newPassword === oldPassword) {
+    return sendJson(res, { success: false, error: '新密码不能与旧密码相同' });
+  }
+  try {
+    const updated = await auth.changePassword(user.id, oldPassword, newPassword);
+    res.setHeader(
+      'Set-Cookie',
+      auth.sessionCookie(req, auth.issueSession(user.id, updated.sessionEpoch || 0))
+    );
+    return sendJson(res, { success: true });
+  } catch (e) {
+    if (e.message === '旧密码错误') {
+      return sendJson(res, { success: false, error: '旧密码错误' });
+    }
+    return sendJson(res, { success: false, error: '修改失败，请重试' });
+  }
+}
+
+async function handleLogoutAll(req, res, user) {
+  if (!user) return sendJson(res, { success: false, error: '未登录', needLogin: true });
+  if (rateLimited(req, 'logout-all', 20, 60 * 60 * 1000)) {
+    return sendJson(res, { success: false, error: '操作太频繁，请稍后再试' });
+  }
+  try {
+    await auth.logoutAll(user.id);
+    res.setHeader('Set-Cookie', auth.clearSessionCookie(req));
+    return sendJson(res, { success: true });
+  } catch {
+    return sendJson(res, { success: false, error: '操作失败，请重试' });
+  }
+}
+
+async function handleGenerateRecoveryCodes(req, res, user) {
+  if (!user) return sendJson(res, { success: false, error: '未登录', needLogin: true });
+  if (rateLimited(req, 'recovery-codes', 10, 60 * 60 * 1000)) {
+    return sendJson(res, { success: false, error: '操作太频繁，请稍后再试' });
+  }
+  let body;
+  try {
+    body = await readJson(req);
+  } catch (e) {
+    return sendBodyError(res, req, e);
+  }
+  const password = String(body.password || '');
+  if (!(await auth.verifyUserPassword(user, password))) {
+    return sendJson(res, { success: false, error: '密码错误' });
+  }
+  try {
+    const codes = await auth.createRecoveryCodes(user.id);
+    return sendJson(res, { success: true, codes });
+  } catch {
+    return sendJson(res, { success: false, error: '生成恢复码失败，请重试' });
+  }
+}
+
+async function handleRecover(req, res) {
+  if (rateLimited(req, 'recover', 10, 15 * 60 * 1000)) {
+    return sendJson(res, { success: false, error: '操作太频繁，请稍后再试' });
+  }
+  let body;
+  try {
+    body = await readJson(req);
+  } catch (e) {
+    return sendBodyError(res, req, e);
+  }
+  const username = String(body.username || '').trim();
+  const code = String(body.code || '');
+  const newPassword = String(body.newPassword || '');
+  if (!USERNAME_RE.test(username) || !code || newPassword.length < 6 || newPassword.length > 128) {
+    return sendJson(res, { success: false, error: '恢复码无效或已使用' });
+  }
+  try {
+    const user = await auth.resetPasswordWithRecovery(username, code, newPassword);
+    res.setHeader(
+      'Set-Cookie',
+      auth.sessionCookie(req, auth.issueSession(user.id, user.sessionEpoch || 0))
+    );
+    return sendJson(res, { success: true });
+  } catch {
+    return sendJson(res, { success: false, error: '恢复码无效或已使用' });
+  }
+}
+
+async function handleDeleteAccount(req, res, user) {
+  if (!user) return sendJson(res, { success: false, error: '未登录', needLogin: true });
+  if (rateLimited(req, 'account-delete', 5, 60 * 60 * 1000)) {
+    return sendJson(res, { success: false, error: '操作太频繁，请稍后再试' });
+  }
+  let body;
+  try {
+    body = await readJson(req);
+  } catch (e) {
+    return sendBodyError(res, req, e);
+  }
+  const password = String(body.password || '');
+  if (!(await auth.verifyUserPassword(user, password))) {
+    return sendJson(res, { success: false, error: '密码错误' });
+  }
+  if (String(body.confirmUsername || '').trim() !== user.username) {
+    return sendJson(res, { success: false, error: '请输入完整用户名确认注销' });
+  }
+  try {
+    await store.withLock(async () => {
+      const pages = store.listUserPastes(user.id);
+      for (const paste of pages) {
+        await store.deletePasteLocked(paste.code);
+      }
+      await auth.deleteUserLocked(user);
+    });
+    res.setHeader('Set-Cookie', auth.clearSessionCookie(req));
+    return sendJson(res, { success: true });
+  } catch (e) {
+    console.error('[account-delete] failed', e);
+    return sendJson(res, { success: false, error: '注销失败，请重试' });
+  }
 }
 
 async function handleMy(req, res, url, user) {
@@ -340,6 +473,11 @@ module.exports = {
   handleRegister,
   handleLogin,
   handleMe,
+  handleChangePassword,
+  handleLogoutAll,
+  handleGenerateRecoveryCodes,
+  handleRecover,
+  handleDeleteAccount,
   handleMy,
   handleDelete,
   handleGenerate,

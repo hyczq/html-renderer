@@ -170,7 +170,7 @@ test('HTML 渲染器 API 冒烟测试', async (t) => {
     assert.match(home.text, /viewport-fit=cover/);
     assert.match(home.text, /@media\(max-width:600px\)/);
 
-    for (const page of ['/login', '/my']) {
+    for (const page of ['/login', '/my', '/settings', '/recover']) {
       const res = await client.get(page);
       assert.equal(res.status, 200, page);
       assert.match(res.text, /测试渲染器/, page);
@@ -178,7 +178,7 @@ test('HTML 渲染器 API 冒烟测试', async (t) => {
       assert.match(res.text, /src="\/theme\.js"/, page);
     }
     // 首页与我的页面共用同一套页面骨架，避免布局再次分叉。
-    for (const page of ['/', '/my']) {
+    for (const page of ['/', '/my', '/settings', '/recover']) {
       const res = await client.get(page);
       assert.match(res.text, /class="page"/, page);
       assert.match(res.text, /class="topbar"/, page);
@@ -741,4 +741,128 @@ test('blob 引用计数：删除一个引用不删正文，最后一个引用才
     }
   }
   assert.equal(gone, true, '最后一个引用删除后应回收 blob');
+});
+
+test('账号安全：改密、退出所有设备、恢复码与注销', async (t) => {
+  const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'html-renderer-account-'));
+  const port = await freePort();
+  const baseUrl = `http://127.0.0.1:${port}`;
+  const child = spawn(process.execPath, [path.join(ROOT, 'server.js')], {
+    cwd: ROOT,
+    env: {
+      ...process.env,
+      PORT: String(port),
+      HOST: '127.0.0.1',
+      DATA_DIR: dataDir,
+      TRUST_PROXY: '0',
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  t.after(async () => {
+    await stopServer(child);
+    await fs.rm(dataDir, { recursive: true, force: true });
+  });
+  await waitForHealth(baseUrl);
+
+  const username = 'acct_' + Date.now().toString(36);
+  const password = 'original-pass-123';
+  const newPassword = 'rotated-pass-456';
+  const recoveredPassword = 'recovered-pass-789';
+  const a = createClient(baseUrl);
+  const b = createClient(baseUrl);
+
+  const reg = await a.post('/api/register', { username, password });
+  assert.equal(reg.json.success, true, reg.text);
+  const loginB = await b.post('/api/login', { username, password });
+  assert.equal(loginB.json.success, true, loginB.text);
+
+  await t.test('修改密码后旧会话失效、当前会话保持', async () => {
+    const changed = await a.post('/api/password', {
+      oldPassword: password,
+      newPassword,
+    });
+    assert.equal(changed.json.success, true, changed.text);
+
+    const meA = await a.json('/api/me');
+    assert.equal(meA.json.success, true, '当前设备应获得新会话');
+    const meB = await b.json('/api/me');
+    assert.equal(meB.json.success, false);
+    assert.equal(meB.json.needLogin, true, '其他设备旧会话应失效');
+
+    const oldLogin = await b.post('/api/login', { username, password });
+    assert.equal(oldLogin.json.success, false);
+    const newLogin = await b.post('/api/login', { username, password: newPassword });
+    assert.equal(newLogin.json.success, true, newLogin.text);
+  });
+
+  await t.test('退出所有设备会吊销全部会话', async () => {
+    const out = await a.post('/api/logout-all', {});
+    assert.equal(out.json.success, true, out.text);
+    const meA = await a.json('/api/me');
+    assert.equal(meA.json.success, false);
+    const meB = await b.json('/api/me');
+    assert.equal(meB.json.success, false);
+  });
+
+  await t.test('恢复码可重置密码且只能使用一次', async () => {
+    const login = await a.post('/api/login', { username, password: newPassword });
+    assert.equal(login.json.success, true, login.text);
+    const codes = await a.post('/api/recovery-codes', { password: newPassword });
+    assert.equal(codes.json.success, true, codes.text);
+    assert.equal(codes.json.codes.length, 10);
+    assert.match(codes.json.codes[0], /^[A-Z0-9]{4}(?:-[A-Z0-9]{4}){3}$/);
+
+    const logout = await a.post('/api/logout', {});
+    assert.equal(logout.json.success, true);
+    const recover = await a.post('/api/recover', {
+      username,
+      code: codes.json.codes[0],
+      newPassword: recoveredPassword,
+    });
+    assert.equal(recover.json.success, true, recover.text);
+    const me = await a.json('/api/me');
+    assert.equal(me.json.success, true);
+
+    await a.post('/api/logout', {});
+    const reuse = await a.post('/api/recover', {
+      username,
+      code: codes.json.codes[0],
+      newPassword: 'another-pass-000',
+    });
+    assert.equal(reuse.json.success, false, '恢复码只能使用一次');
+
+    const oldLogin = await a.post('/api/login', { username, password: newPassword });
+    assert.equal(oldLogin.json.success, false);
+    const recoveredLogin = await a.post('/api/login', {
+      username,
+      password: recoveredPassword,
+    });
+    assert.equal(recoveredLogin.json.success, true, recoveredLogin.text);
+  });
+
+  await t.test('注销账号会删除页面并释放用户名', async () => {
+    const page = '<html><head><title>注销测试</title></head><body>delete me</body></html>';
+    const gen = await a.post('/generate', { type: 'code', code: page });
+    assert.equal(gen.json.success, true, gen.text);
+    const code = gen.json.code;
+
+    const deleted = await a.post('/api/account/delete', {
+      password: recoveredPassword,
+      confirmUsername: username,
+    });
+    assert.equal(deleted.json.success, true, deleted.text);
+
+    const me = await a.json('/api/me');
+    assert.equal(me.json.success, false);
+    const preview = await a.get('/p/' + code);
+    assert.equal(preview.status, 404);
+    const login = await a.post('/api/login', { username, password: recoveredPassword });
+    assert.equal(login.json.success, false);
+
+    const again = await a.post('/api/register', {
+      username,
+      password: recoveredPassword,
+    });
+    assert.equal(again.json.success, true, again.text);
+  });
 });

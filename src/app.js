@@ -164,6 +164,16 @@ function createServer() {
             'Content-Security-Policy': CSP_PAGE,
           });
         }
+        if (pathname === '/settings') {
+          return sendHtml(res, config.render(config.templates.settings, renderVars()), {
+            'Content-Security-Policy': CSP_PAGE,
+          });
+        }
+        if (pathname === '/recover') {
+          return sendHtml(res, config.render(config.templates.recover, renderVars()), {
+            'Content-Security-Policy': CSP_PAGE,
+          });
+        }
         if (pathname === '/healthz') return sendText(res, 'ok');
 
         if (previewMatch) {
@@ -208,6 +218,19 @@ function createServer() {
         if (pathname === '/api/save') return handlers.handleSave(req, res);
         if (pathname === '/api/register') return handlers.handleRegister(req, res);
         if (pathname === '/api/login') return handlers.handleLogin(req, res);
+        if (pathname === '/api/recover') return handlers.handleRecover(req, res);
+        if (pathname === '/api/password') {
+          return handlers.handleChangePassword(req, res, await auth.currentUser(req));
+        }
+        if (pathname === '/api/logout-all') {
+          return handlers.handleLogoutAll(req, res, await auth.currentUser(req));
+        }
+        if (pathname === '/api/recovery-codes') {
+          return handlers.handleGenerateRecoveryCodes(req, res, await auth.currentUser(req));
+        }
+        if (pathname === '/api/account/delete') {
+          return handlers.handleDeleteAccount(req, res, await auth.currentUser(req));
+        }
         if (pathname === '/api/logout') {
           res.setHeader('Set-Cookie', auth.clearSessionCookie(req));
           return sendJson(res, { success: true });

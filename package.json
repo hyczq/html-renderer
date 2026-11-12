@@ -30,6 +30,7 @@
     "start": "node server.js",
     "dev": "DATA_DIR=./data node --watch server.js",
     "test": "node --test test/api.test.js",
-    "doctor": "node scripts/doctor.js"
+    "doctor": "node scripts/doctor.js",
+    "reset-password": "node scripts/reset-password.js"
   }
 }
