@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0b0b0e" media="(prefers-color-scheme: dark)">
+<meta name="preview-origin" content="{{PREVIEW_ORIGIN}}">
 <title>我的页面 - {{BRAND}}</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -146,6 +147,7 @@ body{min-height:100vh;min-height:100dvh;overflow-x:hidden}
 <script>
 (function(){
 function gs(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function previewBase(){var m=document.querySelector('meta[name="preview-origin"]');return (m&&m.content)?m.content:location.origin}
 var he=document.documentElement;
 var pd=window.matchMedia&&window.matchMedia("(prefers-color-scheme:dark)").matches;
 he.setAttribute("data-theme",gs("theme")||(pd?"dark":"light"));
@@ -201,10 +203,10 @@ function render(){
     var meta=document.createElement("div");meta.className="meta";
     meta.textContent=fmtSize(x.size)+" · 创建于 "+fmtDate(x.createdAt)+(x.updatedAt&&x.updatedAt!==x.createdAt?" · 更新于 "+fmtDate(x.updatedAt):"");
     var ib=document.createElement("div");ib.className="ib";
-    var pv=document.createElement("a");pv.className="act";pv.href="/p/"+encodeURIComponent(x.code);pv.target="_blank";pv.rel="noopener";pv.textContent="🔍 预览";
-    var ed=document.createElement("a");ed.className="act";ed.href="/edit/"+encodeURIComponent(x.code)+"?key="+encodeURIComponent(x.editKey);ed.target="_blank";ed.rel="noopener";ed.textContent="✏️ 编辑";
+    var pv=document.createElement("a");pv.className="act";pv.href=previewBase()+"/p/"+encodeURIComponent(x.code);pv.target="_blank";pv.rel="noopener";pv.textContent="🔍 预览";
+    var ed=document.createElement("a");ed.className="act";ed.href="/edit/"+encodeURIComponent(x.code)+"#key="+encodeURIComponent(x.editKey);ed.target="_blank";ed.rel="noopener";ed.textContent="✏️ 编辑";
     var rn=document.createElement("button");rn.className="act";rn.textContent="🏷️ 重命名";rn.onclick=function(){openRename(x)};
-    var cp=document.createElement("button");cp.className="act";cp.textContent="📋 复制链接";cp.onclick=function(){copyText(location.origin+"/p/"+x.code,cp)};
+    var cp=document.createElement("button");cp.className="act";cp.textContent="📋 复制链接";cp.onclick=function(){copyText(previewBase()+"/p/"+x.code,cp)};
     var dl=document.createElement("button");dl.className="act danger";dl.textContent="🗑 删除";dl.onclick=function(){del(x,dl)};
     ib.appendChild(pv);ib.appendChild(ed);ib.appendChild(rn);ib.appendChild(cp);ib.appendChild(dl);
     el.appendChild(nmEl);el.appendChild(ih);el.appendChild(meta);el.appendChild(ib);

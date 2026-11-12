@@ -14,6 +14,17 @@ const { createServer } = require('./src/app');
 
 async function main() {
   await init();
+  if (config.PREVIEW_ORIGIN) {
+    console.log(
+      `[security] preview isolated at ${config.PREVIEW_ORIGIN}` +
+        (config.PREVIEW_SANDBOX ? ' (CSP sandbox enabled)' : '')
+    );
+  } else {
+    console.log(
+      '[security] PREVIEW_ORIGIN not set; preview pages run with CSP sandbox. ' +
+        'Set PREVIEW_ORIGIN to a separate domain for full origin isolation.'
+    );
+  }
   const server = createServer();
 
   server.listen(config.PORT, config.HOST, () => {

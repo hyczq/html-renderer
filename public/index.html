@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0b0b0e" media="(prefers-color-scheme: dark)">
+<meta name="preview-origin" content="{{PREVIEW_ORIGIN}}">
 <title>{{BRAND}}</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -168,8 +169,9 @@ isErr=isErr||false;
 var inner=el.querySelector(".ri")||el;
 el.className="rb show"+(isErr?" error":" success");
 if(isErr){inner.innerHTML="<div class=\"et\">❌ "+esc(data)+"</div>";return}
-var pv=window.location.origin+"/p/"+data.code;
-var ed=window.location.origin+"/edit/"+data.code+"?key="+data.editKey;
+var pvBase=(document.querySelector('meta[name="preview-origin"]')||{}).content||window.location.origin;
+var pv=pvBase+"/p/"+data.code;
+var ed=window.location.origin+"/edit/"+data.code+"#key="+data.editKey;
 inner.innerHTML="<div class=\"rl\">"+(data.reused?"♻️ 相同内容已存在，已复用原链接（未重复存储）":"✅ 永久链接已生成")+"</div>"+
 (data.name?'<div class="exp-info">🏷️ 页面名称：'+esc(data.name)+'</div>':"")+
 "<div class=\"rk\"><div style=\"flex:1;min-width:0\"><span class=\"lbl\">🔗 预览链接（分享这个）</span><a href=\""+pv+"\" target=\"_blank\">"+pv+"</a></div><button class=\"cb\" id=\"c1\">复制</button></div>"+

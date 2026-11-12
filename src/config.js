@@ -19,6 +19,45 @@ const TRUST_PROXY = process.env.TRUST_PROXY === '1';
 const FETCH_TIMEOUT_MS = Number(process.env.FETCH_TIMEOUT_MS || 12000);
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 天
 
+/** 解析公开 Origin：只接受 http/https，且不能带路径、查询或片段。 */
+function parseOrigin(raw, name) {
+  const value = String(raw || '').trim();
+  if (!value) return '';
+  let u;
+  try {
+    u = new URL(value);
+  } catch {
+    throw new Error(`${name} 必须是完整 URL，例如 https://preview.example.com`);
+  }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+    throw new Error(`${name} 仅支持 http/https`);
+  }
+  if (u.username || u.password) throw new Error(`${name} 不能包含用户名或密码`);
+  if (u.search || u.hash) throw new Error(`${name} 不能包含查询参数或片段`);
+  if (u.pathname && u.pathname !== '/') {
+    throw new Error(`${name} 只能包含协议、域名和端口`);
+  }
+  return u.origin;
+}
+
+/**
+ * 预览隔离：
+ * - PREVIEW_ORIGIN 配置后，预览页只在独立域名下提供，主站 /p 只做跳转。
+ * - 未配置时，预览页默认加 CSP sandbox（不透明源），避免同源读取账号 API。
+ * - PREVIEW_SANDBOX=1/0 可显式覆盖；已有独立域名时默认关闭以保持页面兼容性。
+ */
+const PREVIEW_ORIGIN = parseOrigin(process.env.PREVIEW_ORIGIN, 'PREVIEW_ORIGIN');
+const PREVIEW_HOST = PREVIEW_ORIGIN ? new URL(PREVIEW_ORIGIN).host.toLowerCase() : '';
+const PREVIEW_SANDBOX_FLAG = String(process.env.PREVIEW_SANDBOX || '').trim().toLowerCase();
+const PREVIEW_SANDBOX_DISABLED = ['0', 'false', 'no', 'off'].includes(PREVIEW_SANDBOX_FLAG);
+const PREVIEW_SANDBOX = PREVIEW_SANDBOX_FLAG ? !PREVIEW_SANDBOX_DISABLED : !PREVIEW_ORIGIN;
+if (!PREVIEW_ORIGIN && !PREVIEW_SANDBOX) {
+  throw new Error(
+    '未配置 PREVIEW_ORIGIN 时不能关闭 PREVIEW_SANDBOX：同源预览会把账号接口暴露给任意 HTML。' +
+      '请配置 PREVIEW_ORIGIN，或移除 PREVIEW_SANDBOX=0。'
+  );
+}
+
 const PASTE_DIR = path.join(DATA_DIR, 'pastes');
 const BLOB_DIR = path.join(DATA_DIR, 'blobs');
 const USER_DIR = path.join(DATA_DIR, 'users');
@@ -53,6 +92,9 @@ module.exports = {
   TRUST_PROXY,
   FETCH_TIMEOUT_MS,
   SESSION_TTL_MS,
+  PREVIEW_ORIGIN,
+  PREVIEW_HOST,
+  PREVIEW_SANDBOX,
   PASTE_DIR,
   BLOB_DIR,
   USER_DIR,

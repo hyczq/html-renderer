@@ -66,13 +66,14 @@ body{min-height:100vh;min-height:100dvh;overflow-x:hidden;padding-bottom:max(20p
 <div class="info">✏️ 修改下面的 HTML 代码，点击"保存"即可立即生效。原链接和编辑密钥保持不变。</div>
 <div class="nrow"><label>页面名称（方便日后查找）</label><input id="nm" maxlength="60" placeholder="例如：公司官网预览 / 游戏 demo" autocomplete="off"></div>
 <textarea id="ta" placeholder="加载中..." spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
-<div class="bar"><button class="btn bp" id="svb" disabled>💾 保存修改</button><a class="btn bg2" href="/p/{{CODE}}" target="_blank" rel="noopener" style="text-decoration:none;text-align:center">🔍 预览</a><span class="hint"><span id="size" class="size">0 B</span><span>Ctrl/⌘ + S 保存</span></span></div>
+<div class="bar"><button class="btn bp" id="svb" disabled>💾 保存修改</button><a class="btn bg2" href="{{PREVIEW_ORIGIN}}/p/{{CODE}}" target="_blank" rel="noopener" style="text-decoration:none;text-align:center">🔍 预览</a><span class="hint"><span id="size" class="size">0 B</span><span>Ctrl/⌘ + S 保存</span></span></div>
 </div>
 <div class="ts" id="ts" role="status" aria-live="polite"></div>
 <script>
 (function(){
 var code="{{CODE}}";
 var key=new URLSearchParams(location.search).get("key")||"";
+if(!key&&location.hash){key=new URLSearchParams(location.hash.slice(1)).get("key")||""}
 var ta=document.getElementById("ta");
 var nm=document.getElementById("nm");
 var svb=document.getElementById("svb");
@@ -106,7 +107,7 @@ window.addEventListener("beforeunload",function(e){
   if(dirty){e.preventDefault();e.returnValue=""}
 });
 function sts(m,t){var ts=document.getElementById("ts");ts.textContent=m;ts.className="ts show"+(t?" "+t:"");setTimeout(function(){ts.className="ts"+(t?" "+t:"")},2200)}
-fetch("/api/get?code="+encodeURIComponent(code)+"&key="+encodeURIComponent(key)).then(function(r){return r.json()}).then(function(d){
+fetch("/api/get?code="+encodeURIComponent(code),{headers:{"X-Edit-Key":key}}).then(function(r){return r.json()}).then(function(d){
 if(d.success){ta.value=d.html;nm.value=d.name||"";if(d.name)document.title=d.name+" - 编辑";svb.disabled=false;dirty=false;updateSize()}
 else{ta.value="";ta.disabled=true;sts("加载失败："+(d.error||"未知错误"),"error")}
 }).catch(function(e){ta.value="";ta.disabled=true;sts("网络错误","error")});

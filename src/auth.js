@@ -111,38 +111,51 @@ function parseCookies(req) {
 }
 
 function isHttps(req) {
+  if (req.socket && req.socket.encrypted) return true;
+  if (!config.TRUST_PROXY) return false;
   return String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim() === 'https';
 }
 
 function sessionCookie(req, token) {
+  const secure = isHttps(req);
+  // HTTPS 使用 __Host- 前缀：禁止 Domain，避免预览子域写入父域同名 Cookie。
+  const name = secure ? '__Host-hr_session' : 'hr_session';
   const parts = [
-    'hr_session=' + token,
+    name + '=' + token,
     'Path=/',
     'HttpOnly',
     'SameSite=Lax',
     'Max-Age=' + Math.floor(config.SESSION_TTL_MS / 1000),
   ];
-  if (isHttps(req)) parts.push('Secure');
+  if (secure) parts.push('Secure');
   return parts.join('; ');
 }
 
-function clearSessionCookie() {
-  return 'hr_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0';
+function clearSessionCookie(req) {
+  const parts = ['hr_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0'];
+  if (isHttps(req)) {
+    parts.push('__Host-hr_session=; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=0');
+  }
+  return parts;
 }
 
 function anonIdFrom(req) {
-  const v = parseCookies(req).hr_aid;
+  const cookies = parseCookies(req);
+  const v = cookies['__Host-hr_aid'] || cookies.hr_aid;
   return /^[a-f0-9]{32}$/.test(String(v || '')) ? v : '';
 }
 
 function anonCookie(req, id) {
-  const parts = ['hr_aid=' + id, 'Path=/', 'HttpOnly', 'SameSite=Lax', 'Max-Age=31536000'];
-  if (isHttps(req)) parts.push('Secure');
+  const secure = isHttps(req);
+  const name = secure ? '__Host-hr_aid' : 'hr_aid';
+  const parts = [name + '=' + id, 'Path=/', 'HttpOnly', 'SameSite=Lax', 'Max-Age=31536000'];
+  if (secure) parts.push('Secure');
   return parts.join('; ');
 }
 
 async function currentUser(req) {
-  const token = parseCookies(req).hr_session;
+  const cookies = parseCookies(req);
+  const token = cookies['__Host-hr_session'] || cookies.hr_session;
   const userId = verifySession(token);
   if (!userId) return null;
   return store.readUserById(userId);

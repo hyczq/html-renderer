@@ -13,10 +13,10 @@
 - **文件即数据**：页面、用户、索引全部是 JSON/HTML 文件；备份就是打包 `data/`，迁移就是复制目录。
 - **内容级去重**：按 SHA-256 存储正文，多用户相同 HTML 只保留一份，链接与编辑密钥仍各自独立。
 - **自托管可控**：数据完全留在自己的服务器；Docker Compose 一条命令启动，也可直接 `node server.js` 运行。
-- **安全默认**：SSRF 防护、按 IP 限流、scrypt 密码哈希、HMAC 签名 Cookie、CSP、原子写与串行化写锁。
+- **安全默认**：预览页独立域名隔离（可配置）、CSP sandbox 兜底、SSRF 防护、按 IP 限流、scrypt 密码哈希、HMAC 签名 Cookie、原子写与串行化写锁。
 - **移动端友好**：响应式布局、刘海屏安全区域、触控尺寸与输入防缩放，文本响应 gzip 压缩省流量。
 - **完整体验**：深色模式、编辑链接、我的页面、搜索/筛选/分页与快捷键。
-- **可验证**：13 项端到端测试覆盖核心流程，CI 在 Node 18/20/22/24 上回归。
+- **可验证**：20 项测试覆盖核心流程、预览隔离与 Cookie 安全，CI 在 Node 18/20/22/24 上回归。
 
 ## 功能
 
@@ -25,8 +25,9 @@
 | 🌐 从 URL | 服务端抓取远程 HTML 并保存（GitHub raw / 任意静态页） |
 | 📝 粘贴代码 | 直接保存粘贴的 HTML |
 | 📤 上传文件 | 浏览器读取 `.html/.htm` 后提交（≤ 2 MB） |
-| 🔗 永久链接 | `GET /p/<code>` 直接返回存储的 HTML |
-| ✏️ 编辑链接 | `GET /edit/<code>?key=<editKey>`，凭密钥读取/保存 |
+| 🔗 永久链接 | `GET /p/<code>` 返回存储的 HTML；配置预览域后主站只做 302 跳转 |
+| 🛡️ 预览隔离 | 独立预览域名只提供只读页面，不暴露 API、不写 Cookie；未配置时默认 CSP sandbox |
+| ✏️ 编辑链接 | `GET /edit/<code>#key=<editKey>`，凭密钥读取/保存（查询参数 `?key=` 仍兼容） |
 | 👤 注册/登录 | 用户名 + 密码，scrypt 哈希，30 天签名 Cookie 会话 |
 | 📁 我的页面 | 登录后 `/my` 查看全部历史链接，支持搜索、复制、编辑、删除 |
 | 🏷️ 页面命名 | 生成时可填名称（留空自动取 HTML `<title>` / URL 域名），之后可随时重命名 |
@@ -57,7 +58,7 @@ DATA_DIR=./data PORT=3000 npm start
 ### Docker Compose
 
 ```bash
-cp .env.example .env          # 可选：修改 BRAND_NAME 等
+cp .env.example .env          # 可选：修改 BRAND_NAME、PREVIEW_ORIGIN 等
 mkdir -p data/pastes
 sudo chown -R 10001:10001 data   # 容器内以 uid 10001 运行
 docker compose up -d --build
@@ -78,6 +79,41 @@ example.com {
 
 反代场景保持 `TRUST_PROXY=1`，这样会话 Cookie 会在 HTTPS 下带 `Secure`，限流也能取到真实客户端 IP。
 
+### 预览隔离（强烈建议）
+
+预览页会执行用户提供的任意 HTML/JS，因此必须和账号体系分开。配置 `PREVIEW_ORIGIN` 后：
+
+- 主站 `/p/<code>` 不再渲染 HTML，只返回 `302` 到预览域；
+- 预览域只提供 `GET/HEAD /p/<code>`，其他路径一律 `404`；
+- 预览域不读取会话、不写 Cookie、不暴露 `/api/*`；
+- 会话 Cookie 是 host-only 的，不会被发送到预览子域。
+
+条件允许时建议使用**不同注册域**（例如 `example-preview.com`）；至少也要用独立子域。独立子域已能阻断读取主站会话，不同注册域还能避免子域写父域 Cookie 的副作用。`PREVIEW_ORIGIN` 必须指向与主站不同的域名，不能填主站自身。
+
+以 Caddy 为例，把两个域名都反代到同一个服务：
+
+```caddyfile
+example.com {
+    reverse_proxy 127.0.0.1:8899
+}
+
+preview.example.com {
+    reverse_proxy 127.0.0.1:8899
+}
+```
+
+`.env` 中设置：
+
+```bash
+PREVIEW_ORIGIN=https://preview.example.com
+```
+
+Nginx 同理，只要保留原始 `Host`（`proxy_set_header Host $host;`）即可，应用会按 Host 分流。
+
+> 不要用「同域名不同端口」代替独立域名：Cookie 不按端口隔离，端口方案不能真正隔离会话。
+>
+> 如果暂时没有独立域名，应用会默认给预览页加 `CSP sandbox`（不透明源），阻断同源读取 `/api/my` 等接口；但部分依赖 `localStorage` 或同源 API 的 HTML 可能无法正常运行。要完整兼容并彻底隔离，请配置 `PREVIEW_ORIGIN`。
+
 ## 配置
 
 | 环境变量 | 默认值 | 说明 |
@@ -87,8 +123,10 @@ example.com {
 | `DATA_DIR` | `/data` | 数据目录（本地运行请改成 `./data`） |
 | `BRAND_NAME` | `HTML 渲染器` | 页面标题/品牌名 |
 | `MAX_PASTE_BYTES` | `2097152` | 单页最大字节数（2 MB） |
-| `TRUST_PROXY` | `1`（compose） | 是否信任 `X-Forwarded-For` / `CF-Connecting-IP`；直接暴露公网时设为 `0` |
+| `TRUST_PROXY` | `1`（compose） | 是否信任 `X-Forwarded-For` / `CF-Connecting-IP` / `X-Forwarded-Host`；直接暴露公网时设为 `0` |
 | `FETCH_TIMEOUT_MS` | `12000` | 抓取远程 URL 的超时（毫秒） |
+| `PREVIEW_ORIGIN` | 空 | 预览页独立 Origin，例如 `https://preview.example.com`；强烈建议设置 |
+| `PREVIEW_SANDBOX` | 未设置 `PREVIEW_ORIGIN` 时 `1` | 是否给预览页加 CSP sandbox（`1/0`）；独立域名下默认 `0` 以保持页面兼容；未配置 `PREVIEW_ORIGIN` 时禁止设为 `0` |
 
 ## 数据目录
 
@@ -113,9 +151,9 @@ data/
 | 方法 | 路径 | 入参 | 返回 |
 |---|---|---|---|
 | POST | `/generate` | `{"type":"code","code":"<html>","name":"可选"}` 或 `{"type":"url","url":"...","name":"可选"}` | `{"success":true,"code":"...","editKey":"...","name":"...","reused":false}` |
-| GET | `/p/:code` | — | 原始 HTML（预览 CSP 允许脚本，见安全说明） |
-| GET | `/edit/:code?key=` | — | 编辑页 |
-| GET | `/api/get?code=&key=` | — | `{"success":true,"html":"..."}` |
+| GET | `/p/:code` | — | 原始 HTML；配置 `PREVIEW_ORIGIN` 后主站返回 302 到预览域 |
+| GET | `/edit/:code#key=` | — | 编辑页（`?key=` 仍兼容） |
+| GET | `/api/get?code=` | `X-Edit-Key` 请求头（或 `key` 查询参数） | `{"success":true,"html":"..."}` |
 | POST | `/api/save` | `{"code":"...","key":"...","html":"...","name":"可选"}` | 保存内容/名称 |
 | POST | `/api/register` | `{"username":"...","password":"..."}` | 注册并登录 |
 | POST | `/api/login` | 同上 | 登录 |
@@ -185,11 +223,11 @@ HOST=root@your-server ./deploy.sh
 
 ## 安全注意
 
-预览页会在**同源**下渲染任意 HTML/JS，这是产品行为。请使用独立域名部署，**不要**在该域名下放置任何登录态或敏感 Cookie。完整威胁模型与加固清单见 [SECURITY.md](SECURITY.md)。
+预览页会执行任意 HTML/JS。请配置 `PREVIEW_ORIGIN` 使用独立预览域名，**不要**在该域名下放置登录态或敏感 Cookie；应用会保证预览域只读、无 API、不写 Cookie。未配置独立域名时，预览页默认使用 `CSP sandbox` 不透明源作为兜底。完整威胁模型与加固清单见 [SECURITY.md](SECURITY.md)。
 
 其他要点：
 
-- 密码使用 `crypto.scrypt`（N=16384）加盐哈希，会话 Cookie 为 `HttpOnly; SameSite=Lax`，HTTPS 下自动加 `Secure`。
+- 密码使用 `crypto.scrypt`（N=16384）加盐哈希，会话 Cookie 为 `HttpOnly; SameSite=Lax`，HTTPS 下自动加 `Secure` 并使用 `__Host-` 前缀（host-only，降低子域 Cookie 注入风险）。
 - 编辑密钥等同密码；匿名用户丢失后无法找回，登录用户可在「我的页面」查看。code 为 8 位、editKey 为 16 位，均由加密随机数生成。
 - URL 抓取做 SSRF 防护：禁止内网/回环/链路本地/元数据地址，逐跳校验重定向，最多 5 跳、12 秒超时、2 MB。
 - 按 IP 限流：生成（登录 200 次/小时、匿名 60 次/小时）、保存 300 次/小时、登录注册 30 次/15 分钟。

@@ -7,7 +7,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { spawn } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
 const net = require('node:net');
 const http = require('node:http');
 const zlib = require('node:zlib');
@@ -54,9 +54,12 @@ async function stopServer(child) {
   });
 }
 
-function rawGet(url, headers = {}) {
+function rawRequest(method, url, headers = {}, body) {
   return new Promise((resolve, reject) => {
-    const req = http.get(url, { headers }, (res) => {
+    if (body !== undefined && headers['Content-Length'] === undefined) {
+      headers = { ...headers, 'Content-Length': Buffer.byteLength(body) };
+    }
+    const req = http.request(url, { method, headers }, (res) => {
       const chunks = [];
       res.on('data', (chunk) => chunks.push(chunk));
       res.on('end', () =>
@@ -65,7 +68,13 @@ function rawGet(url, headers = {}) {
     });
     req.on('error', reject);
     req.setTimeout(5000, () => req.destroy(new Error('request timeout')));
+    if (body !== undefined) req.write(body);
+    req.end();
   });
+}
+
+function rawGet(url, headers = {}) {
+  return rawRequest('GET', url, headers);
 }
 
 function createClient(baseUrl) {
@@ -115,6 +124,7 @@ function createClient(baseUrl) {
     get: (p) => request('GET', p, undefined, true),
     post: (p, body) => request('POST', p, body),
     json: (p) => request('GET', p),
+    cookieHeader,
   };
 }
 
@@ -201,6 +211,10 @@ test('HTML 渲染器 API 冒烟测试', async (t) => {
     const preview = await anon.get('/p/' + gen.json.code);
     assert.equal(preview.status, 200);
     assert.equal(preview.text, pageA);
+    const previewCsp = preview.headers.get('content-security-policy') || '';
+    assert.match(previewCsp, /(?:^|;)\s*sandbox\b/);
+    assert.doesNotMatch(previewCsp, /allow-same-origin/);
+    assert.equal(preview.headers.get('set-cookie'), null);
 
     const editPage = await anon.get(`/edit/${gen.json.code}?key=${gen.json.editKey}`);
     assert.equal(editPage.status, 200);
@@ -214,6 +228,13 @@ test('HTML 渲染器 API 冒烟测试', async (t) => {
     );
     assert.equal(got.json.success, true);
     assert.equal(got.json.html, pageA);
+
+    const gotHeader = await rawGet(`${baseUrl}/api/get?code=${gen.json.code}`, {
+      'X-Edit-Key': gen.json.editKey,
+    });
+    const gotHeaderJson = JSON.parse(gotHeader.body.toString('utf8'));
+    assert.equal(gotHeaderJson.success, true);
+    assert.equal(gotHeaderJson.html, pageA);
   });
 
   await t.test('同一匿名浏览器内容去重', async () => {
@@ -315,6 +336,95 @@ test('HTML 渲染器 API 冒烟测试', async (t) => {
   assert.equal(stderr, '', '服务不应向 stderr 输出错误');
 });
 
+test('预览独立域名隔离', async (t) => {
+  const port = await freePort();
+  const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'html-renderer-preview-'));
+  const baseUrl = `http://127.0.0.1:${port}`;
+  const previewHost = 'preview.example.test';
+  const previewOrigin = `https://${previewHost}`;
+  const child = spawn(process.execPath, [path.join(ROOT, 'server.js')], {
+    cwd: ROOT,
+    env: {
+      ...process.env,
+      PORT: String(port),
+      HOST: '127.0.0.1',
+      DATA_DIR: dataDir,
+      TRUST_PROXY: '0',
+      PREVIEW_ORIGIN: previewOrigin,
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  let stderr = '';
+  child.stderr.on('data', (d) => {
+    stderr += d;
+  });
+
+  t.after(async () => {
+    await stopServer(child);
+    await fs.rm(dataDir, { recursive: true, force: true });
+  });
+
+  await waitForHealth(baseUrl);
+  const client = createClient(baseUrl);
+  const username = 'preview_' + Date.now().toString(36);
+  const reg = await client.post('/api/register', { username, password: 'test-pass-123' });
+  assert.equal(reg.json.success, true, reg.text);
+
+  const page =
+    '<!doctype html><html><head><title>隔离测试</title></head><body>preview</body></html>';
+  const gen = await client.post('/generate', { type: 'code', code: page });
+  assert.equal(gen.json.success, true, gen.text);
+  const code = gen.json.code;
+
+  await t.test('主站 /p 只跳转，不再同源渲染', async () => {
+    const res = await client.get('/p/' + code);
+    assert.equal(res.status, 302);
+    assert.equal(res.headers.get('location'), `${previewOrigin}/p/${code}`);
+  });
+
+  await t.test('预览域只读渲染，不写 Cookie', async () => {
+    const res = await rawGet(`${baseUrl}/p/${code}`, { Host: previewHost });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.toString('utf8'), page);
+    assert.equal(res.headers['set-cookie'], undefined);
+    assert.doesNotMatch(String(res.headers['content-security-policy'] || ''), /allow-same-origin/);
+  });
+
+  await t.test('预览域无法访问账号 API', async () => {
+    const res = await rawGet(`${baseUrl}/api/my`, {
+      Host: previewHost,
+      Cookie: client.cookieHeader(),
+    });
+    assert.equal(res.status, 404);
+    assert.equal(res.headers['set-cookie'], undefined);
+
+    const home = await rawGet(`${baseUrl}/`, { Host: previewHost });
+    assert.equal(home.status, 404);
+
+    const post = await rawRequest(
+      'POST',
+      `${baseUrl}/generate`,
+      { Host: previewHost, 'Content-Type': 'application/json' },
+      JSON.stringify({ type: 'code', code: '<html></html>' })
+    );
+    assert.equal(post.status, 404);
+  });
+
+  await t.test('主站账号与页面仍正常，链接指向预览域', async () => {
+    const me = await client.json('/api/me');
+    assert.equal(me.json.success, true);
+    assert.equal(me.json.user.username, username);
+
+    const home = await client.get('/');
+    assert.ok(home.text.includes(`content="${previewOrigin}"`), '首页应注入预览域');
+
+    const edit = await client.get(`/edit/${code}?key=${encodeURIComponent(gen.json.editKey)}`);
+    assert.ok(edit.text.includes(`${previewOrigin}/p/${code}`), '编辑页预览链接应指向预览域');
+  });
+
+  assert.equal(stderr, '', '服务不应向 stderr 输出错误');
+});
+
 test('旧版内嵌 HTML 数据自动迁移', async (t) => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'html-renderer-migrate-'));
   const legacyHtml =
@@ -362,4 +472,61 @@ test('旧版内嵌 HTML 数据自动迁移', async (t) => {
   const got = await client.json(`/api/get?code=LEGACY01&key=${record.editKey}`);
   assert.equal(got.json.success, true);
   assert.equal(got.json.html, legacyHtml);
+});
+
+test('未配置预览域名时禁止关闭 CSP sandbox', () => {
+  const result = spawnSync(process.execPath, ['-e', "require('./src/config')"], {
+    cwd: ROOT,
+    env: { ...process.env, PREVIEW_ORIGIN: '', PREVIEW_SANDBOX: '0' },
+    encoding: 'utf8',
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /PREVIEW_SANDBOX/);
+});
+
+test('HTTPS 代理下会话 Cookie 使用 __Host- 前缀', async (t) => {
+  const port = await freePort();
+  const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'html-renderer-cookie-'));
+  const baseUrl = `http://127.0.0.1:${port}`;
+  const child = spawn(process.execPath, [path.join(ROOT, 'server.js')], {
+    cwd: ROOT,
+    env: {
+      ...process.env,
+      PORT: String(port),
+      HOST: '127.0.0.1',
+      DATA_DIR: dataDir,
+      TRUST_PROXY: '1',
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  t.after(async () => {
+    await stopServer(child);
+    await fs.rm(dataDir, { recursive: true, force: true });
+  });
+  await waitForHealth(baseUrl);
+
+  const body = JSON.stringify({
+    username: 'host_' + Date.now().toString(36),
+    password: 'test-pass-123',
+  });
+  const reg = await rawRequest(
+    'POST',
+    baseUrl + '/api/register',
+    { 'Content-Type': 'application/json', 'X-Forwarded-Proto': 'https' },
+    body
+  );
+  assert.equal(reg.status, 200);
+  assert.equal(JSON.parse(reg.body.toString('utf8')).success, true);
+  const setCookies = reg.headers['set-cookie'] || [];
+  assert.ok(
+    setCookies.some((c) => c.startsWith('__Host-hr_session=')),
+    'HTTPS 下应设置 __Host- 会话 Cookie'
+  );
+
+  const logout = await rawRequest('POST', baseUrl + '/api/logout', {
+    'X-Forwarded-Proto': 'https',
+  });
+  const cleared = logout.headers['set-cookie'] || [];
+  assert.ok(cleared.some((c) => c.startsWith('hr_session=')));
+  assert.ok(cleared.some((c) => c.startsWith('__Host-hr_session=')));
 });

@@ -56,6 +56,7 @@ function sendJson(res, obj, status = 200, extra = {}) {
     'Content-Type': 'application/json;charset=UTF-8',
     'Cache-Control': 'no-store',
     'X-Content-Type-Options': 'nosniff',
+    'Cross-Origin-Resource-Policy': 'same-origin',
     ...extra,
   });
 }
@@ -76,6 +77,16 @@ function sendHtml(res, html, extra = {}) {
     'X-Frame-Options': 'DENY',
     ...extra,
   });
+}
+
+/** 空响应跳转；Location 必须由服务端配置生成，不能来自用户输入。 */
+function sendRedirect(res, location, status = 302) {
+  res.writeHead(status, {
+    Location: location,
+    'Cache-Control': 'no-store',
+    'Content-Length': 0,
+  });
+  res.end();
 }
 
 /** 读取请求体，超过 limit 时抛出 code=TOO_LARGE。 */
@@ -159,6 +170,7 @@ module.exports = {
   sendJson,
   sendText,
   sendHtml,
+  sendRedirect,
   readBody,
   sendBodyError,
   readJson,

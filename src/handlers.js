@@ -318,7 +318,8 @@ async function handleGenerate(req, res, user, anonId) {
 
 async function handleGet(req, res, url) {
   const code = url.searchParams.get('code') || '';
-  const key = url.searchParams.get('key') || '';
+  // 优先从请求头读取，避免编辑密钥进入 URL / 访问日志；查询参数保留兼容。
+  const key = String(req.headers['x-edit-key'] || url.searchParams.get('key') || '');
   if (!CODE_RE.test(code)) return sendJson(res, { success: false, error: '页面不存在或已过期' });
   const paste = await store.readPaste(code);
   if (!paste) return sendJson(res, { success: false, error: '页面不存在或已过期' });

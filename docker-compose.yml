@@ -16,6 +16,8 @@ services:
       TRUST_PROXY: "${TRUST_PROXY:-1}"
       MAX_PASTE_BYTES: "${MAX_PASTE_BYTES:-2097152}"
       FETCH_TIMEOUT_MS: "${FETCH_TIMEOUT_MS:-12000}"
+      PREVIEW_ORIGIN: "${PREVIEW_ORIGIN:-}"
+      PREVIEW_SANDBOX: "${PREVIEW_SANDBOX:-}"
     mem_limit: 128m
     pids_limit: 128
     security_opt:
