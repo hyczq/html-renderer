@@ -2,7 +2,7 @@
 
 /**
  * 业务处理器：注册/登录、生成、读取、保存、重命名、删除、我的页面。
- * 所有错误遵循原站约定：HTTP 200 + { success:false, error }。
+ * 所有错误统一遵循：HTTP 200 + { success:false, error }。
  */
 
 const crypto = require('node:crypto');

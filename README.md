@@ -2,9 +2,20 @@
 
 把一段 HTML（粘贴 / 上传文件 / 远程 URL 抓取）变成**永久预览链接**的自托管小服务，并提供凭密钥访问的编辑页、账号体系与历史记录。
 
-零第三方运行时依赖：单个 Node.js 进程 + 文件存储，Docker 一键部署，适合小内存服务器。
+**零第三方运行时依赖 · 文件即数据 · 内容级去重 · Docker 一键部署**
 
-> 交互与视觉风格参考 [526900.pages.dev](https://526900.pages.dev/) 的「HTML 渲染器」；本项目是独立的自托管实现，与原站无隶属关系。
+[![CI](https://github.com/hyczq/html-renderer/actions/workflows/ci.yml/badge.svg)](https://github.com/hyczq/html-renderer/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+## 项目特色
+
+- **零第三方运行时依赖**：只用 Node.js 标准库，无需 `npm install`，没有数据库、Redis 或对象存储。
+- **文件即数据**：页面、用户、索引全部是 JSON/HTML 文件；备份就是打包 `data/`，迁移就是复制目录。
+- **内容级去重**：按 SHA-256 存储正文，多用户相同 HTML 只保留一份，链接与编辑密钥仍各自独立。
+- **自托管可控**：数据完全留在自己的服务器；Docker Compose 一条命令启动，也可直接 `node server.js` 运行。
+- **安全默认**：SSRF 防护、按 IP 限流、scrypt 密码哈希、HMAC 签名 Cookie、CSP、原子写与串行化写锁。
+- **完整体验**：响应式布局、深色模式、编辑链接、我的页面、搜索/筛选/分页与快捷键。
+- **可验证**：12 项端到端测试覆盖核心流程，CI 在 Node 18/20/22/24 上回归。
 
 ## 功能
 
@@ -95,7 +106,7 @@ data/
 
 ## HTTP API
 
-错误统一以 HTTP 200 + `{"success":false,"error":"..."}` 返回（与参考站点一致）；未登录返回 `needLogin:true`。
+错误统一以 HTTP 200 + `{"success":false,"error":"..."}` 返回；未登录返回 `needLogin:true`。
 
 | 方法 | 路径 | 入参 | 返回 |
 |---|---|---|---|
@@ -170,14 +181,6 @@ HOST=root@your-server ./deploy.sh
 
 > `.env` 不会随部署脚本上传。如需自定义 `BRAND_NAME` 等配置，请在服务器上的 `REMOTE_DIR` 下自行创建 `.env`（可从 `.env.example` 复制）。
 
-## 与原站的差异
-
-- 增加账号体系、历史记录、内容去重（原站没有）；
-- 去掉原站顶部广告条（改为自用公告），头像换成本地 SVG，品牌名可用 `BRAND_NAME` 修改；
-- URL 抓取增加 SSRF 防护（禁止内网/回环/元数据地址，逐跳校验重定向），5 次跳转、12 秒超时、2 MB；
-- 每 IP 限流（生成：登录 200 次/小时、匿名 60 次/小时；保存 300 次/小时；登录注册 30 次/15 分钟）；
-- 存储为文件，无外部数据库；code 8 位、editKey 16 位；密码 scrypt，会话 HMAC-SHA256 签名 Cookie。
-
 ## 安全注意
 
 预览页会在**同源**下渲染任意 HTML/JS，这是产品行为。请使用独立域名部署，**不要**在该域名下放置任何登录态或敏感 Cookie。完整威胁模型与加固清单见 [SECURITY.md](SECURITY.md)。
@@ -185,7 +188,9 @@ HOST=root@your-server ./deploy.sh
 其他要点：
 
 - 密码使用 `crypto.scrypt`（N=16384）加盐哈希，会话 Cookie 为 `HttpOnly; SameSite=Lax`，HTTPS 下自动加 `Secure`。
-- 编辑密钥等同密码；匿名用户丢失后无法找回，登录用户可在「我的页面」查看。
+- 编辑密钥等同密码；匿名用户丢失后无法找回，登录用户可在「我的页面」查看。code 为 8 位、editKey 为 16 位，均由加密随机数生成。
+- URL 抓取做 SSRF 防护：禁止内网/回环/链路本地/元数据地址，逐跳校验重定向，最多 5 跳、12 秒超时、2 MB。
+- 按 IP 限流：生成（登录 200 次/小时、匿名 60 次/小时）、保存 300 次/小时、登录注册 30 次/15 分钟。
 - 数据备份只需打包 `data/`，但请妥善保管 `secret.key`。
 
 ## License
