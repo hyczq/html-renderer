@@ -195,7 +195,7 @@ src/
   handlers.js             # 业务处理器（生成/读取/保存/重命名/删除等）
   app.js                  # 路由、CSP、预览 ETag/304
   bootstrap.js            # 建目录、密钥、旧数据迁移
-public/                   # index / edit / login / my 页面与 avatar.svg
+public/                   # index / edit / login / my 页面、theme.css/theme.js 与 avatar.svg
 test/api.test.js          # 端到端冒烟测试（node:test）
 scripts/doctor.js         # 数据自检：缺失 blob / hash 不一致 / 孤儿 blob
 Dockerfile
@@ -203,6 +203,9 @@ docker-compose.yml
 deploy.sh                 # tar over ssh 部署脚本（需自行设置 HOST）
 .env.example
 SECURITY.md
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+.github/                  # CI、Issue / PR 模板
 ```
 
 ## 开发与测试
@@ -239,6 +242,10 @@ HOST=root@your-server ./deploy.sh
 - URL 抓取做 SSRF 防护：DNS 只解析一次并固定到已校验 IP（防 DNS 重绑定），拦截 IPv4/IPv6 私网、回环、链路本地、元数据、NAT64、6to4、Teredo 等地址；默认只允许 80/443 端口，逐跳复验重定向，最多 5 跳、12 秒超时、2 MB；可用 `URL_FETCH_ENABLED=0` 完全关闭。
 - 按 IP 限流：生成（登录 200 次/小时、匿名 60 次/小时）、保存 300 次/小时、登录注册 30 次/15 分钟。
 - 数据备份只需打包 `data/`，但请妥善保管 `secret.key`。
+
+## 贡献
+
+欢迎提交 Issue 和 Pull Request。参与前请阅读 [CONTRIBUTING.md](CONTRIBUTING.md) 与 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)；安全漏洞请按 [SECURITY.md](SECURITY.md) 的流程私下报告，不要公开提交 Issue。
 
 ## License
 

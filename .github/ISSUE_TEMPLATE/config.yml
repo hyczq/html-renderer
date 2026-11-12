@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 安全漏洞报告
+    url: https://github.com/hyczq/html-renderer/security/advisories/new
+    about: 请勿公开提交安全漏洞，使用 GitHub 私密安全公告。
+  - name: 使用与部署文档
+    url: https://github.com/hyczq/html-renderer#readme
+    about: 先查看 README 中的运行、配置和部署说明。
