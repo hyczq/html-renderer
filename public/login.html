@@ -18,6 +18,9 @@ body{display:flex;align-items:center;justify-content:center;padding:24px 16px}
 .auth-head .brand-name{font-size:19px}
 .auth-actions{display:flex;flex:none;align-items:center;gap:6px}
 .auth-card .seg{margin-bottom:22px}
+.pn{display:none}
+.pn.active{display:block;animation:panelIn .18s var(--ease)}
+@keyframes panelIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
 .auth-card .btn-block{margin-top:6px}
 .pw{position:relative}
 .pw .input{padding-right:52px}
@@ -43,6 +46,7 @@ body{display:flex;align-items:center;justify-content:center;padding:24px 16px}
   .auth-head .brand-sub{display:none}
 }
 @media(max-height:640px){body{align-items:flex-start;padding-top:max(16px,env(safe-area-inset-top))}}
+@media(prefers-reduced-motion:reduce){.pn.active{animation:none}}
 </style>
 </head>
 <body>
@@ -62,17 +66,17 @@ body{display:flex;align-items:center;justify-content:center;padding:24px 16px}
   </header>
 
   <div class="seg" role="tablist" aria-label="登录或注册">
-    <button class="tb active" data-tab="login" role="tab" aria-selected="true">登录</button>
-    <button class="tb" data-tab="reg" role="tab" aria-selected="false">注册</button>
+    <button class="tb active" id="tab-login" data-tab="login" role="tab" aria-selected="true" aria-controls="p-login">登录</button>
+    <button class="tb" id="tab-reg" data-tab="reg" role="tab" aria-selected="false" aria-controls="p-reg">注册</button>
   </div>
 
-  <div class="pn active" id="p-login">
+  <div class="pn active" id="p-login" role="tabpanel" aria-labelledby="tab-login">
     <div class="field"><label for="lu">用户名</label><input class="input" id="lu" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="请输入用户名"></div>
     <div class="field"><label for="lp">密码</label><div class="pw"><input class="input" id="lp" type="password" autocapitalize="off" spellcheck="false" autocomplete="current-password" placeholder="请输入密码"><button type="button" class="eye" data-for="lp" aria-label="显示密码">👁️</button></div></div>
     <p class="hint" style="margin-top:-8px;margin-bottom:14px;text-align:right"><a href="/recover">忘记密码？</a></p>
   </div>
 
-  <div class="pn" id="p-reg">
+  <div class="pn" id="p-reg" role="tabpanel" aria-labelledby="tab-reg">
     <div class="field"><label for="ru">用户名</label><input class="input" id="ru" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="3-32 位，中英文 / 数字 / _ / -"></div>
     <div class="field"><label for="rp">密码</label><div class="pw"><input class="input" id="rp" type="password" autocapitalize="off" spellcheck="false" autocomplete="new-password" placeholder="至少 6 位"><button type="button" class="eye" data-for="rp" aria-label="显示密码">👁️</button></div></div>
     <div class="field"><label for="rp2">确认密码</label><div class="pw"><input class="input" id="rp2" type="password" autocapitalize="off" spellcheck="false" autocomplete="new-password" placeholder="再次输入密码"><button type="button" class="eye" data-for="rp2" aria-label="显示密码">👁️</button></div></div>
@@ -142,7 +146,7 @@ go.addEventListener("click",async function(){
   finally{btn.disabled=false;btn.textContent=old}
 });
 fetch("/api/me").then(function(r){return r.json()}).then(function(d){
-  if(d.success){show("已登录为 "+d.user.username+"，3 秒后前往我的页面...",true);setTimeout(function(){location.href="/my"},1500)}
+  if(d.success){show("已登录为 "+d.user.username+"，即将前往我的页面...",true);setTimeout(function(){location.href="/my"},1200)}
 }).catch(function(){});
 })();
 </script>

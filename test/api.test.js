@@ -177,6 +177,11 @@ test('HTML 渲染器 API 冒烟测试', async (t) => {
       assert.match(res.text, /href="\/theme\.css"/, page);
       assert.match(res.text, /src="\/theme\.js"/, page);
     }
+    // 登录/注册必须只显示当前标签对应的面板，避免两个表单同时出现。
+    const loginPage = await client.get('/login');
+    assert.match(loginPage.text, /\.pn\{display:none\}/);
+    assert.match(loginPage.text, /\.pn\.active\{display:block/);
+
     // 首页与我的页面共用同一套页面骨架，避免布局再次分叉。
     for (const page of ['/', '/my', '/settings', '/recover']) {
       const res = await client.get(page);
