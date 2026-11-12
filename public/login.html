@@ -6,114 +6,90 @@
 <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0b0b0e" media="(prefers-color-scheme: dark)">
 <title>登录 - {{BRAND}}</title>
+<link rel="stylesheet" href="/theme.css">
+<script src="/theme.js"></script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#f2f2f7;--bg2:#fff;--card:rgba(255,255,255,.72);--cardh:rgba(255,255,255,.88);--txt:#1c1c1e;--txt2:#3a3a3c;--txt3:#8e8e93;--bd:rgba(60,60,67,.08);--ac:#007aff;--sh:0 20px 50px rgba(0,0,0,.06);--gr:linear-gradient(135deg,#007aff,#5856d6);--tab:rgba(118,118,128,.12);--taba:#fff;--in:rgba(118,118,128,.06);--rb:rgba(0,122,255,.06);--rbd:rgba(0,122,255,.15);--eb:rgba(255,59,48,.06);--ebd:rgba(255,59,48,.15)}
-[data-theme="dark"]{--bg:#0b0b0e;--bg2:#1c1c1e;--card:rgba(28,28,30,.75);--cardh:rgba(44,44,46,.9);--txt:#f5f5f7;--txt2:#aeaeb2;--txt3:#636366;--bd:rgba(255,255,255,.08);--ac:#0a84ff;--sh:0 20px 50px rgba(0,0,0,.7);--tab:rgba(118,118,128,.18);--taba:#2c2c2e;--in:rgba(118,118,128,.1);--rb:rgba(10,132,255,.1);--rbd:rgba(10,132,255,.2);--eb:rgba(255,69,58,.08);--ebd:rgba(255,69,58,.18)}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;display:flex;justify-content:center;align-items:center;padding:24px 16px;transition:background .35s,color .35s}
-.box{max-width:520px;width:100%;background:var(--card);backdrop-filter:saturate(180%) blur(24px);-webkit-backdrop-filter:saturate(180%) blur(24px);border-radius:44px;padding:40px 36px;box-shadow:var(--sh),inset 0 0 0 .5px rgba(255,255,255,.1);border:.5px solid var(--bd)}
-.hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:30px}
-.br{display:flex;align-items:center;gap:14px}
-.av{width:48px;height:48px;border-radius:50%;object-fit:cover;background:var(--bd);border:1px solid var(--bd);flex-shrink:0}
-.bt{display:flex;flex-direction:column}
-.bn{font-size:21px;font-weight:700;letter-spacing:-.3px;background:var(--gr);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.2}
-.bs{font-size:12px;font-weight:500;color:var(--txt3);letter-spacing:.2px;margin-top:2px}
-.tt{width:40px;height:40px;border-radius:50%;background:var(--tab);border:.5px solid var(--bd);color:var(--txt2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;text-decoration:none}
-.tc{display:flex;gap:4px;margin-bottom:28px;background:var(--tab);border-radius:40px;padding:4px}
-.tb{flex:1;padding:10px 8px;border:none;border-radius:32px;font-size:14px;font-weight:600;cursor:pointer;background:transparent;color:var(--txt3);font-family:inherit}
-.tb.active{background:var(--taba);color:var(--txt);box-shadow:0 8px 30px rgba(0,0,0,.04);border:.5px solid var(--bd)}
-.pn{display:none}.pn.active{display:block}
-.ig{margin-bottom:18px}
-.ig label{display:block;font-size:13px;font-weight:600;color:var(--txt2);margin-bottom:8px}
-input{width:100%;padding:15px 18px;border:1.5px solid var(--bd);border-radius:18px;font-size:15px;font-family:inherit;background:var(--in);color:var(--txt);line-height:1.4}
-input:focus{outline:none;border-color:var(--ac);background:var(--bg2);box-shadow:0 0 0 4px rgba(0,122,255,.08)}
+/* 登录页：复用共享卡片、品牌栏、分段控件与表单样式 */
+body{display:flex;align-items:center;justify-content:center;padding:24px 16px}
+.auth{width:100%;max-width:460px}
+.auth-card{padding:30px}
+.auth-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:24px}
+.auth-head .brand{gap:11px}
+.auth-head .brand-name{font-size:19px}
+.auth-actions{display:flex;flex:none;align-items:center;gap:6px}
+.auth-card .seg{margin-bottom:22px}
+.auth-card .btn-block{margin-top:6px}
 .pw{position:relative}
-.pw input{padding-right:52px}
-.eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;background:transparent;font-size:17px;cursor:pointer;color:var(--txt3);padding:8px;line-height:1;border-radius:50%}
+.pw .input{padding-right:52px}
+.eye{position:absolute;top:50%;right:4px;display:flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border:none;border-radius:50%;background:transparent;color:var(--txt3);font-size:17px;line-height:1;cursor:pointer;transform:translateY(-50%)}
 .eye:hover{background:var(--tab)}
-.btn{width:100%;padding:16px 20px;border:none;border-radius:40px;font-size:17px;font-weight:600;cursor:pointer;background:var(--gr);color:#fff;box-shadow:0 4px 16px rgba(0,122,255,.18);font-family:inherit;margin-top:6px}
-.btn:active:not(:disabled){transform:scale(.97)}
-.btn:disabled{opacity:.5;cursor:default}
-.rb{margin-top:20px;border-radius:16px;display:none;overflow:hidden;border:.5px solid var(--bd);background:var(--bg2)}
+.rb{display:none;overflow:hidden;margin-top:16px;padding:12px 14px;border:1px solid var(--bd);border-radius:var(--r-md);background:var(--in);font-size:13.5px;font-weight:500}
 .rb.show{display:block}
-.rb.success{border-color:var(--rbd);background:var(--rb)}
-.rb.error{border-color:var(--ebd);background:var(--eb)}
-.ri{padding:14px 18px;font-size:14px;font-weight:500}
-.et{color:#ff3b30}
-.ok{color:#34c759}
-.tip{margin-top:22px;font-size:12px;color:var(--txt3);text-align:center;line-height:1.6}
-.tip a{color:var(--ac);text-decoration:none;font-weight:600}
-@media(max-width:600px){body{padding:16px 12px}.box{padding:28px 20px;border-radius:32px}.bn{font-size:19px}}
-/* ---------- 移动端适配 ---------- */
-html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
-button,a{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-button:focus-visible,a:focus-visible{outline:2px solid var(--ac);outline-offset:3px}
-body{min-height:100vh;min-height:100dvh;overflow-x:hidden}
+.rb.success{border-color:var(--ok-bd);background:var(--ok-bg)}
+.rb.error{border-color:var(--err-bd);background:var(--err-bg)}
+.tip{margin-top:20px;color:var(--txt3);font-size:12px;line-height:1.7;text-align:center}
+.tip a{color:var(--ac-text);font-weight:600}
 @media(max-width:600px){
-  body{padding:16px max(12px,env(safe-area-inset-left)) max(16px,env(safe-area-inset-bottom));align-items:flex-start}
-  .box{padding:24px 18px;border-radius:28px}
-  .hd{margin-bottom:24px;gap:8px}
-  .bn{font-size:19px}
-  .bs{font-size:11px}
-  .tc{margin-bottom:22px}
-  .tb{min-height:40px;font-size:13px}
-  input{font-size:16px;min-height:48px}
-  .eye{width:44px;height:44px;right:2px}
-  .btn{min-height:50px;font-size:16px}
-  .tip{font-size:11px;margin-top:18px}
+  body{align-items:flex-start;padding:16px max(12px,env(safe-area-inset-left)) max(16px,env(safe-area-inset-bottom))}
+  .auth-card{padding:22px 18px}
+  .auth-head{margin-bottom:20px}
+  .auth-head .brand-name{font-size:17px}
+  .eye{width:44px;height:44px;right:0}
+  .tip{margin-top:16px;font-size:11px}
 }
 @media(max-width:380px){
   body{padding:10px}
-  .box{padding:20px 14px;border-radius:24px}
-  .av{width:40px;height:40px}
-  .bn{font-size:17px}
-  .bs{display:none}
+  .auth-card{padding:20px 14px;border-radius:var(--r-md)}
+  .auth-head .brand-sub{display:none}
 }
 @media(max-height:640px){body{align-items:flex-start;padding-top:max(16px,env(safe-area-inset-top))}}
-@media(prefers-reduced-motion:reduce){.btn,.tb{transition:none}}
 </style>
 </head>
 <body>
-<div class="box">
-  <header class="hd">
-    <div class="br">
-      <img class="av" src="/avatar.svg" alt="{{BRAND}}">
-      <div class="bt"><span class="bn">{{BRAND}}</span><span class="bs">登录后保存历史 · 相同内容自动复用</span></div>
+<main class="card auth-card">
+  <header class="auth-head">
+    <a class="brand" href="/" aria-label="{{BRAND}} 首页">
+      <img class="brand-avatar" src="/avatar.svg" alt="">
+      <span class="brand-text">
+        <span class="brand-name">{{BRAND}}</span>
+        <span class="brand-sub">登录后保存历史 · 相同内容自动复用</span>
+      </span>
+    </a>
+    <div class="auth-actions">
+      <button class="icon-btn" id="tt" type="button" aria-label="切换深色模式"><span id="ti">🌙</span></button>
+      <a class="icon-btn" href="/" title="返回首页" aria-label="返回首页">✕</a>
     </div>
-    <a class="tt" href="/" title="返回首页">✕</a>
   </header>
-  <div class="tc">
-    <button class="tb active" data-tab="login">登录</button>
-    <button class="tb" data-tab="reg">注册</button>
+
+  <div class="seg" role="tablist" aria-label="登录或注册">
+    <button class="tb active" data-tab="login" role="tab" aria-selected="true">登录</button>
+    <button class="tb" data-tab="reg" role="tab" aria-selected="false">注册</button>
   </div>
+
   <div class="pn active" id="p-login">
-    <div class="ig"><label for="lu">用户名</label><input id="lu" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="请输入用户名"></div>
-    <div class="ig"><label for="lp">密码</label><div class="pw"><input id="lp" type="password" autocapitalize="off" spellcheck="false" autocomplete="current-password" placeholder="请输入密码"><button type="button" class="eye" data-for="lp" aria-label="显示密码">👁️</button></div></div>
+    <div class="field"><label for="lu">用户名</label><input class="input" id="lu" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="请输入用户名"></div>
+    <div class="field"><label for="lp">密码</label><div class="pw"><input class="input" id="lp" type="password" autocapitalize="off" spellcheck="false" autocomplete="current-password" placeholder="请输入密码"><button type="button" class="eye" data-for="lp" aria-label="显示密码">👁️</button></div></div>
   </div>
+
   <div class="pn" id="p-reg">
-    <div class="ig"><label for="ru">用户名</label><input id="ru" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="3-32 位，中英文 / 数字 / _ / -"></div>
-    <div class="ig"><label for="rp">密码</label><div class="pw"><input id="rp" type="password" autocapitalize="off" spellcheck="false" autocomplete="new-password" placeholder="至少 6 位"><button type="button" class="eye" data-for="rp" aria-label="显示密码">👁️</button></div></div>
-    <div class="ig"><label for="rp2">确认密码</label><div class="pw"><input id="rp2" type="password" autocapitalize="off" spellcheck="false" autocomplete="new-password" placeholder="再次输入密码"><button type="button" class="eye" data-for="rp2" aria-label="显示密码">👁️</button></div></div>
+    <div class="field"><label for="ru">用户名</label><input class="input" id="ru" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="3-32 位，中英文 / 数字 / _ / -"></div>
+    <div class="field"><label for="rp">密码</label><div class="pw"><input class="input" id="rp" type="password" autocapitalize="off" spellcheck="false" autocomplete="new-password" placeholder="至少 6 位"><button type="button" class="eye" data-for="rp" aria-label="显示密码">👁️</button></div></div>
+    <div class="field"><label for="rp2">确认密码</label><div class="pw"><input class="input" id="rp2" type="password" autocapitalize="off" spellcheck="false" autocomplete="new-password" placeholder="再次输入密码"><button type="button" class="eye" data-for="rp2" aria-label="显示密码">👁️</button></div></div>
   </div>
-  <button class="btn" id="go">登录</button>
+
+  <button class="btn btn-primary btn-block" id="go" type="button">登录</button>
   <div class="rb" id="res" role="status" aria-live="polite"><div class="ri"></div></div>
   <p class="tip">登录后可随时找回历史链接，避免重复生成<br><a href="/">← 返回首页继续免登录生成</a></p>
-</div>
+</main>
 <script>
 (function(){
-function gs(k){try{return localStorage.getItem(k)}catch(e){return null}}
-function ss(k,v){try{localStorage.setItem(k,v)}catch(e){}}
-var he=document.documentElement;
-var pd=window.matchMedia&&window.matchMedia("(prefers-color-scheme:dark)").matches;
-var ct=gs("theme")||(pd?"dark":"light");
-he.setAttribute("data-theme",ct);
 var curTab="login";
 var tabs=document.querySelectorAll(".tb");
 var pns={login:document.getElementById("p-login"),reg:document.getElementById("p-reg")};
 var go=document.getElementById("go");
 for(var i=0;i<tabs.length;i++){tabs[i].addEventListener("click",function(){
-  for(var j=0;j<tabs.length;j++)tabs[j].classList.remove("active");
-  this.classList.add("active");
+  for(var j=0;j<tabs.length;j++){tabs[j].classList.remove("active");tabs[j].setAttribute("aria-selected","false")}
+  this.classList.add("active");this.setAttribute("aria-selected","true");
   for(var k in pns)pns[k].classList.remove("active");
   curTab=this.getAttribute("data-tab");
   pns[curTab].classList.add("active");
@@ -134,7 +110,7 @@ document.querySelectorAll(".eye").forEach(function(b){
     b.setAttribute("aria-label",show?"隐藏密码":"显示密码");
   });
 });
-document.querySelector(".box").addEventListener("keydown",function(e){
+document.querySelector(".auth-card").addEventListener("keydown",function(e){
   if(e.key==="Enter"&&e.target&&e.target.tagName==="INPUT"){e.preventDefault();go.click()}
 });
 function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}

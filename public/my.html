@@ -7,152 +7,125 @@
 <meta name="theme-color" content="#0b0b0e" media="(prefers-color-scheme: dark)">
 <meta name="preview-origin" content="{{PREVIEW_ORIGIN}}">
 <title>我的页面 - {{BRAND}}</title>
+<link rel="stylesheet" href="/theme.css">
+<script src="/theme.js"></script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#f2f2f7;--bg2:#fff;--card:rgba(255,255,255,.75);--cardh:rgba(255,255,255,.92);--txt:#1c1c1e;--txt2:#3a3a3c;--txt3:#8e8e93;--bd:rgba(60,60,67,.08);--ac:#007aff;--sh:0 20px 50px rgba(0,0,0,.06);--gr:linear-gradient(135deg,#007aff,#5856d6);--tab:rgba(118,118,128,.12);--in:rgba(118,118,128,.06);--eb:rgba(255,59,48,.08)}
-[data-theme="dark"]{--bg:#0b0b0e;--bg2:#1c1c1e;--card:rgba(28,28,30,.75);--cardh:rgba(44,44,46,.9);--txt:#f5f5f7;--txt2:#aeaeb2;--txt3:#636366;--bd:rgba(255,255,255,.08);--ac:#0a84ff;--sh:0 20px 50px rgba(0,0,0,.7);--tab:rgba(118,118,128,.18);--in:rgba(118,118,128,.1);--eb:rgba(255,69,58,.1)}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;padding:28px 16px 70px;transition:background .35s,color .35s}
-.wrap{max-width:860px;margin:0 auto}
-.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px;flex-wrap:wrap}
-.brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit}
-.av{width:44px;height:44px;border-radius:50%;border:1px solid var(--bd)}
-.bn{font-size:19px;font-weight:700;letter-spacing:-.3px;background:var(--gr);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.bs{font-size:12px;color:var(--txt3);margin-top:1px}
-.acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.who{font-size:13px;color:var(--txt2);font-weight:600;padding-right:4px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.btn2{padding:9px 16px;border-radius:30px;border:.5px solid var(--bd);background:var(--tab);color:var(--txt2);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center}
-.btn2:hover{background:var(--cardh)}
-.btn2.primary{background:var(--gr);color:#fff;border:none;box-shadow:0 4px 14px rgba(0,122,255,.2)}
-.stats{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap}
-.stat{background:var(--card);border:.5px solid var(--bd);border-radius:18px;padding:14px 18px;flex:1;min-width:120px;box-shadow:var(--sh)}
-.stat .v{font-size:22px;font-weight:700;background:var(--gr);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.stat .k{font-size:12px;color:var(--txt3);margin-top:2px}
+/* 我的页面专属布局：与首页共用 theme.css 的顶栏、卡片与控件 */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.stat{padding:15px 18px;border:1px solid var(--bd);border-radius:var(--r-lg);background:var(--card);box-shadow:var(--sh-sm);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px)}
+.stat .v{font-size:22px;font-weight:700;letter-spacing:-.4px;line-height:1.25;background:var(--gr);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.stat .k{margin-top:2px;color:var(--txt3);font-size:12px}
+.who{max-width:160px;overflow:hidden;color:var(--txt2);font-size:13px;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
+.list-card{padding:24px}
 .toolbar{display:flex;align-items:center;gap:10px;margin-bottom:12px}
-.toolbar input{flex:1;padding:12px 16px;border-radius:16px;border:1.5px solid var(--bd);background:var(--in);color:var(--txt);font-size:14px;font-family:inherit}
-.toolbar input:focus{outline:none;border-color:var(--ac);background:var(--bg2)}
-.count{font-size:12px;color:var(--txt3);white-space:nowrap}
-.filters{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
-.fbtn{padding:7px 14px;border-radius:24px;border:.5px solid var(--bd);background:transparent;color:var(--txt3);font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit}
-.fbtn:hover{background:var(--tab)}
-.fbtn.active{background:var(--tab);color:var(--txt);border-color:var(--bd);box-shadow:0 4px 12px rgba(0,0,0,.04)}
-.list{display:flex;flex-direction:column;gap:12px}
-.item{background:var(--card);border:.5px solid var(--bd);border-radius:22px;padding:16px 18px;box-shadow:var(--sh)}
-.pname{font-size:16px;font-weight:700;margin-bottom:7px;line-height:1.35;word-break:break-word}
-.pname.unnamed{color:var(--txt3);font-weight:500;font-size:14px}
-.ih{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;font-weight:600;color:var(--ac)}
-.badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:var(--tab);color:var(--txt3)}
-.meta{font-size:12px;color:var(--txt3);margin-top:6px}
+.search-wrap{position:relative;flex:1;min-width:0}
+.search-icon{position:absolute;top:50%;left:14px;color:var(--txt3);font-size:13px;line-height:1;pointer-events:none;transform:translateY(-50%)}
+.search-input{padding-left:38px}
+.count{flex:none;color:var(--txt3);font-size:12px;white-space:nowrap}
+.filters{margin-bottom:2px}
+.list{display:flex;flex-direction:column}
+.item{padding:18px 2px}
+.item + .item{border-top:1px solid var(--bd)}
+.pname{margin-bottom:6px;font-size:16px;font-weight:700;line-height:1.35;word-break:break-word}
+.pname.unnamed{color:var(--txt3);font-size:14px;font-weight:500}
+.ih{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.code{padding:2px 8px;border-radius:7px;background:var(--info-bg);color:var(--ac-text);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;font-weight:600}
+.meta{margin-top:6px;color:var(--txt3);font-size:12px;line-height:1.5}
 .ib{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-.act{padding:7px 14px;border-radius:24px;border:.5px solid var(--bd);background:var(--tab);color:var(--txt2);font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center}
-.act:hover{background:var(--cardh)}
-.act.danger{color:#ff3b30}
-.act.danger:hover{background:var(--eb)}
-.empty{text-align:center;padding:70px 20px;color:var(--txt3);font-size:14px;line-height:2}
-.empty a{color:var(--ac);font-weight:600;text-decoration:none}
-.linkbtn{border:none;background:transparent;color:var(--ac);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:underline}
-.loading{padding:40px;text-align:center;color:var(--txt3);font-size:14px}
-.more{display:none;margin:18px auto 0;padding:11px 22px;border-radius:30px;border:.5px solid var(--bd);background:var(--card);color:var(--txt2);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
-.more:hover{background:var(--cardh)}
-.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--txt);color:var(--bg2);padding:12px 24px;border-radius:30px;font-size:14px;font-weight:500;opacity:0;transition:all .3s;z-index:99;pointer-events:none;max-width:90vw;text-align:center}
-.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:20px;z-index:100}
-.modal.show{display:flex}
-.mbox{background:var(--bg2);border-radius:24px;padding:24px;width:100%;max-width:420px;box-shadow:0 30px 80px rgba(0,0,0,.28)}
-.mtitle{font-size:17px;font-weight:700;margin-bottom:14px}
-.mbox input{width:100%;padding:13px 15px;border:1.5px solid var(--bd);border-radius:14px;background:var(--in);color:var(--txt);font-size:15px;font-family:inherit}
-.mbox input:focus{outline:none;border-color:var(--ac);background:var(--card);box-shadow:0 0 0 4px rgba(0,122,255,.08)}
-.mbtns{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
-@media(max-width:600px){body{padding:16px 12px 50px}.bn{font-size:17px}.who{display:none}.item{border-radius:18px;padding:14px}.toolbar input{font-size:13px}}
-/* ---------- 移动端适配 ---------- */
-html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
-button,a{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-button:focus-visible,a:focus-visible{outline:2px solid var(--ac);outline-offset:3px}
-body{min-height:100vh;min-height:100dvh;overflow-x:hidden}
+.ib .act{font-weight:600}
+.more{display:none;width:100%;margin-top:8px}
+.list .empty{padding:44px 16px}
 @media(max-width:600px){
-  body{padding:16px max(12px,env(safe-area-inset-left)) max(40px,env(safe-area-inset-bottom))}
-  .top{gap:8px;margin-bottom:18px;flex-wrap:nowrap}
-  .brand{gap:10px;flex:1;min-width:0}
-  .av{width:40px;height:40px;flex-shrink:0}
-  .brand>div{min-width:0}
-  .bn{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .bs{font-size:11px}
-  .acts{gap:6px;flex-shrink:0}
-  .btn2{padding:8px 12px;font-size:12px;min-height:38px}
-  .stats{gap:8px;margin-bottom:14px}
-  .stat{padding:12px 14px;min-width:0;flex:1 1 calc(50% - 4px);border-radius:16px}
-  .stat .v{font-size:20px}
-  .toolbar{gap:8px;flex-wrap:wrap;margin-bottom:10px}
-  .toolbar input{font-size:16px;min-height:46px;width:100%;flex:1 1 100%}
-  .count{font-size:11px;margin-left:auto}
-  .filters{gap:6px;margin-bottom:14px}
-  .fbtn{min-height:36px;padding:7px 12px}
-  .item{padding:14px;border-radius:18px}
-  .ih{gap:8px}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px}
+  .stat{padding:12px 14px;border-radius:var(--r-md)}
+  .stat .v{font-size:19px}
+  .stat .k{font-size:11px}
+  .who{display:none}
+  .list-card{padding:18px}
+  .toolbar{flex-wrap:wrap;gap:8px}
+  .search-wrap{flex:1 1 100%}
+  .count{margin-left:auto}
+  .filters .fbtn{min-height:36px;padding:8px 4px}
+  .item{padding:16px 0}
+  .pname{font-size:15px}
   .ib{gap:6px;margin-top:10px}
-  .act{min-height:38px;padding:7px 11px;font-size:12px}
-  .empty{padding:48px 16px}
+  .ib .act{min-height:38px;padding:8px 11px;font-size:12px}
   .more{min-height:44px}
-  .toast{left:12px;right:12px;bottom:calc(20px + env(safe-area-inset-bottom));max-width:none;width:auto;transform:translateY(120px);padding:12px 16px;border-radius:16px;font-size:13px}
-  .toast.show{transform:translateY(0)}
-  .modal{padding:16px}
-  .mbox{padding:20px;border-radius:20px}
-  .mbox input{font-size:16px;min-height:46px}
-  .mbtns .btn2{min-height:44px}
 }
 @media(max-width:380px){
-  body{padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right))}
-  .top{gap:6px}
-  .bn{font-size:15px}
-  .btn2{padding:7px 10px;font-size:11.5px}
-  .stats{flex-direction:column}
-  .stat{flex:1 1 auto}
-  .ib .act{flex:1 1 calc(50% - 3px);justify-content:center}
+  .stats{grid-template-columns:1fr}
+  .ib .act{flex:1 1 calc(50% - 3px)}
 }
-@media(max-height:520px){.modal{align-items:flex-start;padding-top:24px}}
-@media(prefers-reduced-motion:reduce){.toast{transition:none}}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header class="top">
-    <a class="brand" href="/"><img class="av" src="/avatar.svg" alt="{{BRAND}}"><div><div class="bn">{{BRAND}}</div><div class="bs">我的页面</div></div></a>
-    <div class="acts">
+<div class="page">
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="{{BRAND}} 首页">
+      <img class="brand-avatar" src="/avatar.svg" alt="">
+      <span class="brand-text">
+        <span class="brand-name">{{BRAND}}</span>
+        <span class="brand-sub">我的页面</span>
+      </span>
+    </a>
+    <div class="topbar-actions">
       <span class="who" id="who"></span>
-      <a class="btn2 primary" href="/">＋ 新建</a>
-      <button class="btn2" id="logout">退出</button>
+      <a class="btn btn-primary btn-sm" href="/">＋ 新建</a>
+      <button class="btn btn-ghost btn-sm" id="logout" type="button">退出</button>
+      <button class="icon-btn" id="tt" type="button" aria-label="切换深色模式"><span id="ti">🌙</span></button>
     </div>
   </header>
+
   <div class="stats" id="stats"></div>
-  <div class="toolbar">
-    <input id="q" placeholder="搜索名称 / code / 类型（按 / 聚焦）" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
-    <span class="count" id="count"></span>
-  </div>
-  <div class="filters" id="filters">
-    <button class="fbtn active" data-f="all">全部</button>
-    <button class="fbtn" data-f="code">📝 代码</button>
-    <button class="fbtn" data-f="url">🔗 URL</button>
-  </div>
-  <div class="list" id="list"><div class="loading">加载中...</div></div>
-  <button class="more" id="more">加载更多</button>
+
+  <section class="card list-card">
+    <div class="toolbar">
+      <div class="search-wrap">
+        <span class="search-icon" aria-hidden="true">🔍</span>
+        <input class="input search-input" id="q" placeholder="搜索名称 / code / 类型（按 / 聚焦）" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
+      </div>
+      <span class="count" id="count"></span>
+    </div>
+    <div class="seg filters" id="filters" role="tablist" aria-label="按类型筛选">
+      <button class="fbtn active" data-f="all" role="tab" aria-selected="true">全部</button>
+      <button class="fbtn" data-f="code" role="tab" aria-selected="false">📝 代码</button>
+      <button class="fbtn" data-f="url" role="tab" aria-selected="false">🔗 URL</button>
+    </div>
+    <div class="list" id="list"><div class="loading">加载中...</div></div>
+    <button class="btn btn-ghost more" id="more" type="button">加载更多</button>
+  </section>
 </div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mtitle">
-  <div class="mbox">
-    <div class="mtitle" id="mtitle">重命名页面</div>
-    <input id="mname" maxlength="60" placeholder="给这个页面起个名字（留空则清除）" autocomplete="off" spellcheck="false">
-    <div class="mbtns"><button class="btn2" id="mcancel">取消</button><button class="btn2 primary" id="msave">保存</button></div>
+  <div class="modal-card">
+    <div class="modal-title" id="mtitle">重命名页面</div>
+    <input class="input" id="mname" maxlength="60" placeholder="给这个页面起个名字（留空则清除）" autocomplete="off" spellcheck="false">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="mcancel" type="button">取消</button>
+      <button class="btn btn-primary" id="msave" type="button">保存</button>
+    </div>
   </div>
 </div>
+
+<div class="modal" id="delModal" role="dialog" aria-modal="true" aria-labelledby="dtitle" aria-describedby="ddesc">
+  <div class="modal-card modal-danger">
+    <div class="modal-icon" aria-hidden="true">🗑️</div>
+    <div class="modal-title" id="dtitle">删除这个页面？</div>
+    <p class="modal-desc" id="ddesc">确定要删除「<strong id="dname"></strong>」吗？</p>
+    <p class="modal-warning">删除后预览链接将立即失效，且无法恢复。</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="dcancel" type="button">取消</button>
+      <button class="btn btn-danger-solid" id="dconfirm" type="button">确认删除</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
-function gs(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function previewBase(){var m=document.querySelector('meta[name="preview-origin"]');return (m&&m.content)?m.content:location.origin}
-var he=document.documentElement;
-var pd=window.matchMedia&&window.matchMedia("(prefers-color-scheme:dark)").matches;
-he.setAttribute("data-theme",gs("theme")||(pd?"dark":"light"));
-
-var all=[], total=0, stats={count:0,bytes:0}, curFilter="all", loading=false, renameTarget=null;
+var all=[], total=0, stats={count:0,bytes:0}, curFilter="all", loading=false, renameTarget=null, deleteTarget=null, deleteTrigger=null, deleting=false;
 
 function toast(m){var t=document.getElementById("toast");t.textContent=m;t.className="toast show";setTimeout(function(){t.className="toast"},1800)}
 function fmtSize(n){if(!n)return"0 B";if(n<1024)return n+" B";if(n<1048576)return (n/1024).toFixed(1)+" KB";return (n/1048576).toFixed(2)+" MB"}
@@ -170,7 +143,7 @@ function loadStats(){
 }
 function updateMore(){
   var b=document.getElementById("more");
-  b.style.display=all.length<total?"block":"none";
+  b.style.display=all.length<total?"inline-flex":"none";
   b.textContent="加载更多（已显示 "+all.length+" / "+total+"）";
 }
 function render(){
@@ -187,9 +160,9 @@ function render(){
     if(total===0){
       list.innerHTML='<div class="empty">还没有生成过页面<br><a href="/">去生成第一个 →</a></div>';
     }else{
-      list.innerHTML='<div class="empty">没有匹配的记录<br><button class="linkbtn" id="clear">清除筛选</button></div>';
+      list.innerHTML='<div class="empty">没有匹配的记录<br><button class="btn btn-ghost btn-sm" id="clear" type="button">清除筛选</button></div>';
       var c=document.getElementById("clear");
-      if(c)c.addEventListener("click",function(){document.getElementById("q").value="";curFilter="all";document.querySelectorAll(".fbtn").forEach(function(b){b.classList.toggle("active",b.dataset.f==="all")});render()});
+      if(c)c.addEventListener("click",function(){document.getElementById("q").value="";curFilter="all";document.querySelectorAll(".fbtn").forEach(function(b){b.classList.toggle("active",b.dataset.f==="all");b.setAttribute("aria-selected",b.dataset.f==="all"?"true":"false")});render()});
     }
     return;
   }
@@ -203,11 +176,11 @@ function render(){
     var meta=document.createElement("div");meta.className="meta";
     meta.textContent=fmtSize(x.size)+" · 创建于 "+fmtDate(x.createdAt)+(x.updatedAt&&x.updatedAt!==x.createdAt?" · 更新于 "+fmtDate(x.updatedAt):"");
     var ib=document.createElement("div");ib.className="ib";
-    var pv=document.createElement("a");pv.className="act";pv.href=previewBase()+"/p/"+encodeURIComponent(x.code);pv.target="_blank";pv.rel="noopener";pv.textContent="🔍 预览";
-    var ed=document.createElement("a");ed.className="act";ed.href="/edit/"+encodeURIComponent(x.code)+"#key="+encodeURIComponent(x.editKey);ed.target="_blank";ed.rel="noopener";ed.textContent="✏️ 编辑";
-    var rn=document.createElement("button");rn.className="act";rn.textContent="🏷️ 重命名";rn.onclick=function(){openRename(x)};
-    var cp=document.createElement("button");cp.className="act";cp.textContent="📋 复制链接";cp.onclick=function(){copyText(previewBase()+"/p/"+x.code,cp)};
-    var dl=document.createElement("button");dl.className="act danger";dl.textContent="🗑 删除";dl.onclick=function(){del(x,dl)};
+    var pv=document.createElement("a");pv.className="btn btn-ghost btn-sm act";pv.href=previewBase()+"/p/"+encodeURIComponent(x.code);pv.target="_blank";pv.rel="noopener";pv.textContent="🔍 预览";
+    var ed=document.createElement("a");ed.className="btn btn-ghost btn-sm act";ed.href="/edit/"+encodeURIComponent(x.code)+"#key="+encodeURIComponent(x.editKey);ed.target="_blank";ed.rel="noopener";ed.textContent="✏️ 编辑";
+    var rn=document.createElement("button");rn.className="btn btn-ghost btn-sm act";rn.type="button";rn.textContent="🏷️ 重命名";rn.onclick=function(){openRename(x)};
+    var cp=document.createElement("button");cp.className="btn btn-ghost btn-sm act";cp.type="button";cp.textContent="📋 复制链接";cp.onclick=function(){copyText(previewBase()+"/p/"+x.code,cp)};
+    var dl=document.createElement("button");dl.className="btn btn-danger btn-sm act";dl.type="button";dl.textContent="🗑 删除";dl.onclick=function(){openDelete(x,dl)};
     ib.appendChild(pv);ib.appendChild(ed);ib.appendChild(rn);ib.appendChild(cp);ib.appendChild(dl);
     el.appendChild(nmEl);el.appendChild(ih);el.appendChild(meta);el.appendChild(ib);
     list.appendChild(el);
@@ -232,17 +205,42 @@ function saveRename(){
       else toast(d.error||"重命名失败");
     }).catch(function(){toast("网络错误")}).finally(function(){btn.disabled=false;btn.textContent="保存"});
 }
-function del(x,btn){
-  if(!confirm("确定删除「"+(x.name||x.code)+"」？删除后预览链接将失效，不可恢复。"))return;
-  btn.disabled=true;btn.textContent="删除中...";
+function openDelete(x,btn){
+  deleteTarget=x;deleteTrigger=btn||null;deleting=false;
+  var yes=document.getElementById("dconfirm"),no=document.getElementById("dcancel");
+  yes.disabled=false;no.disabled=false;yes.textContent="确认删除";
+  document.getElementById("dname").textContent=x.name?x.name+"（"+x.code+"）":x.code;
+  document.getElementById("delModal").classList.add("show");
+  document.body.style.overflow="hidden";
+  setTimeout(function(){no.focus()},50);
+}
+function closeDelete(force){
+  if(deleting&&!force)return;
+  document.getElementById("delModal").classList.remove("show");
+  document.body.style.overflow="";
+  deleteTarget=null;
+  var trigger=deleteTrigger;
+  var yes=document.getElementById("dconfirm"),no=document.getElementById("dcancel");
+  yes.disabled=false;no.disabled=false;yes.textContent="确认删除";
+  deleteTrigger=null;deleting=false;
+  if(trigger&&trigger.focus){try{trigger.focus()}catch(e){}}
+}
+function confirmDelete(){
+  if(!deleteTarget||deleting)return;
+  var x=deleteTarget;
+  var yes=document.getElementById("dconfirm"),no=document.getElementById("dcancel");
+  deleting=true;yes.disabled=true;no.disabled=true;yes.textContent="删除中...";
+  function fail(msg){
+    deleting=false;yes.disabled=false;no.disabled=false;yes.textContent="确认删除";toast(msg);
+  }
   fetch("/api/delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:x.code})})
     .then(function(r){return r.json()}).then(function(d){
       if(d.success){
         all=all.filter(function(y){return y.code!==x.code});
         total=Math.max(0,total-1);stats.count=Math.max(0,stats.count-1);stats.bytes=Math.max(0,stats.bytes-(x.size||0));
-        toast("已删除");loadStats();render();updateMore();
-      }else{toast(d.error||"删除失败");btn.disabled=false;btn.textContent="🗑 删除"}
-    }).catch(function(){toast("网络错误");btn.disabled=false;btn.textContent="🗑 删除"});
+        closeDelete(true);toast("已删除");loadStats();render();updateMore();
+      }else{fail(d.error||"删除失败")}
+    }).catch(function(){fail("网络错误")});
 }
 function load(reset){
   if(loading)return;
@@ -260,7 +258,7 @@ document.getElementById("q").addEventListener("input",function(){clearTimeout(se
 document.querySelectorAll(".fbtn").forEach(function(b){
   b.addEventListener("click",function(){
     curFilter=b.dataset.f;
-    document.querySelectorAll(".fbtn").forEach(function(x){x.classList.toggle("active",x===b)});
+    document.querySelectorAll(".fbtn").forEach(function(x){x.classList.toggle("active",x===b);x.setAttribute("aria-selected",x===b?"true":"false")});
     render();
   });
 });
@@ -268,12 +266,18 @@ document.getElementById("more").addEventListener("click",function(){load(false)}
 document.getElementById("mcancel").addEventListener("click",closeRename);
 document.getElementById("msave").addEventListener("click",saveRename);
 document.getElementById("modal").addEventListener("click",function(e){if(e.target===this)closeRename()});
+document.getElementById("dcancel").addEventListener("click",function(){closeDelete()});
+document.getElementById("dconfirm").addEventListener("click",confirmDelete);
+document.getElementById("delModal").addEventListener("click",function(e){if(e.target===this)closeDelete()});
 document.getElementById("mname").addEventListener("keydown",function(e){
   if(e.key==="Enter"){e.preventDefault();saveRename()}
   if(e.key==="Escape"){e.preventDefault();closeRename()}
 });
 document.addEventListener("keydown",function(e){
-  if(e.key==="Escape"&&document.getElementById("modal").classList.contains("show"))closeRename();
+  if(e.key==="Escape"){
+    if(document.getElementById("delModal").classList.contains("show")){e.preventDefault();closeDelete();return}
+    if(document.getElementById("modal").classList.contains("show")){e.preventDefault();closeRename();return}
+  }
   if(e.key==="/"&&document.activeElement.tagName!=="INPUT"&&document.activeElement.tagName!=="TEXTAREA"){e.preventDefault();document.getElementById("q").focus()}
 });
 document.getElementById("logout").addEventListener("click",function(){

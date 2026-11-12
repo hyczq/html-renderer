@@ -104,6 +104,8 @@ const templates = {
   my: fs.readFileSync(path.join(PUBLIC_DIR, 'my.html'), 'utf8'),
 };
 const avatarSvg = fs.readFileSync(path.join(PUBLIC_DIR, 'avatar.svg'), 'utf8');
+const themeCss = fs.readFileSync(path.join(PUBLIC_DIR, 'theme.css'), 'utf8');
+const themeJs = fs.readFileSync(path.join(PUBLIC_DIR, 'theme.js'), 'utf8');
 
 /** 替换模板中的 {{UPPER_CASE}} 占位符；未知变量保持原样。 */
 function render(tpl, vars) {
@@ -136,5 +138,7 @@ module.exports = {
   ALPHABET,
   templates,
   avatarSvg,
+  themeCss,
+  themeJs,
   render,
 };

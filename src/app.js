@@ -131,6 +131,17 @@ function createServer() {
           res.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' });
           return res.end(config.avatarSvg);
         }
+        // 全站共享样式与主题脚本：集中维护设计令牌，避免各页面样式分叉。
+        if (pathname === '/theme.css' || pathname === '/theme.js') {
+          const isCss = pathname === '/theme.css';
+          res.writeHead(200, {
+            'Content-Type': isCss ? 'text/css;charset=UTF-8' : 'text/javascript;charset=UTF-8',
+            'Cache-Control': 'public, max-age=300',
+            'X-Content-Type-Options': 'nosniff',
+            'Cross-Origin-Resource-Policy': 'same-origin',
+          });
+          return res.end(isCss ? config.themeCss : config.themeJs);
+        }
         if (pathname === '/healthz') return sendText(res, 'ok');
 
         if (previewMatch) {

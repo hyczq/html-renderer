@@ -1,74 +1,74 @@
-<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0b0b0e" media="(prefers-color-scheme: dark)">
-<title>编辑 - {{BRAND}}</title><style>
-*{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#f2f2f7;--card:#fff;--txt:#1c1c1e;--txt2:#3a3a3c;--txt3:#8e8e93;--bd:rgba(60,60,67,.08);--ac:#007aff;--dg:#ff3b30;--sc:#34c759}
-[data-theme="dark"]{--bg:#0b0b0e;--card:#1c1c1e;--txt:#f5f5f7;--txt2:#aeaeb2;--txt3:#636366;--bd:rgba(255,255,255,.08);--ac:#0a84ff}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;padding:20px;display:flex;flex-direction:column;align-items:center}
-.wp{max-width:900px;width:100%}
-.tp{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px;flex-wrap:wrap}
-.tp h1{font-size:20px;font-weight:700}
-.tp h1 span{color:var(--ac);font-family:SF Mono,monospace}
-.info{padding:12px 16px;background:rgba(0,122,255,.08);border:1px solid rgba(0,122,255,.2);border-radius:12px;font-size:13px;color:var(--ac);margin-bottom:16px;line-height:1.5}
-.info.warn{background:rgba(255,59,48,.08);border-color:rgba(255,59,48,.25);color:#ff3b30}
-textarea{width:100%;min-height:60vh;padding:16px;border:1.5px solid var(--bd);border-radius:14px;background:var(--card);color:var(--txt);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;line-height:1.6;resize:vertical}
-textarea:focus{outline:none;border-color:var(--ac);box-shadow:0 0 0 4px rgba(0,122,255,.1)}
-.nrow{margin-bottom:14px}
-.nrow label{display:block;font-size:13px;font-weight:600;color:var(--txt2);margin-bottom:8px}
-.nrow input{width:100%;padding:13px 16px;border:1.5px solid var(--bd);border-radius:14px;background:var(--card);color:var(--txt);font-size:14px;font-family:inherit}
-.nrow input:focus{outline:none;border-color:var(--ac);box-shadow:0 0 0 4px rgba(0,122,255,.1)}
-.bar{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;align-items:center}
-.hint{margin-left:auto;font-size:12px;color:var(--txt3);display:flex;align-items:center;gap:8px}
-.size{font-family:SF Mono,Menlo,monospace}
-.size.warn{color:#ff9f0a}
-.size.danger{color:#ff3b30}
-.btn{padding:12px 24px;border:none;border-radius:30px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit}
-.bp{background:var(--ac);color:#fff}
-.bp:active{transform:scale(.97)}
-.bp:disabled{opacity:.5;cursor:default}
-.bg2{background:transparent;color:var(--txt2);border:1px solid var(--bd)}
-.bg2:hover{background:var(--card);color:var(--txt)}
-.ts{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--txt);color:var(--card);padding:12px 24px;border-radius:30px;font-size:14px;font-weight:500;opacity:0;transition:all .3s;z-index:9999;pointer-events:none;max-width:90vw;text-align:center}
-.ts.show{transform:translateX(-50%) translateY(0);opacity:1}
-.ts.error{background:var(--dg);color:#fff}
-.ts.success{background:var(--sc);color:#fff}
-@media(max-width:600px){body{padding:12px}.tp h1{font-size:17px}textarea{min-height:50vh;font-size:12px}}
-/* ---------- 移动端适配 ---------- */
-html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
-button,a{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-button:focus-visible,a:focus-visible{outline:2px solid var(--ac);outline-offset:3px}
-body{min-height:100vh;min-height:100dvh;overflow-x:hidden;padding-bottom:max(20px,env(safe-area-inset-bottom))}
+<title>编辑 - {{BRAND}}</title>
+<link rel="stylesheet" href="/theme.css">
+<script src="/theme.js"></script>
+<style>
+/* 编辑页：复用共享页面骨架、顶栏、卡片、表单与按钮 */
+.editor-card{padding:26px}
+.editor-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.editor-head h1{font-size:20px;font-weight:700;letter-spacing:-.2px}
+.editor-code{display:inline-block;margin-top:4px;padding:2px 8px;border-radius:7px;background:var(--info-bg);color:var(--ac);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;font-weight:600}
+.editor-card .notice{margin-bottom:16px}
+.code-area{min-height:56vh;min-height:56dvh;font-size:13px;line-height:1.65}
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px}
+.bar .hint{display:flex;align-items:center;gap:8px;margin-left:auto}
+.size{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.size.warn{color:var(--warn-text)}
+.size.danger{color:var(--danger-text)}
 @media(max-width:600px){
-  body{padding:12px max(12px,env(safe-area-inset-left)) max(16px,env(safe-area-inset-bottom))}
-  .tp{margin-bottom:12px}
-  .tp h1{font-size:17px}
-  .info{font-size:12px;padding:10px 12px;margin-bottom:12px}
-  .nrow{margin-bottom:12px}
-  .nrow input{font-size:16px;min-height:46px}
-  textarea{min-height:48vh;min-height:48dvh;font-size:16px;padding:12px;line-height:1.5}
+  .editor-head h1{font-size:17px}
+  .code-area{min-height:46vh;min-height:46dvh;font-size:16px;line-height:1.5;padding:12px}
   .bar{gap:8px}
-  .bar .btn{flex:1 1 0;min-height:46px;padding:12px 10px;font-size:15px;text-align:center}
-  .hint{margin-left:0;width:100%;justify-content:space-between;font-size:11px;padding-top:2px}
-  .ts{left:12px;right:12px;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateY(120px);max-width:none;width:auto;padding:12px 16px;border-radius:16px;font-size:13px}
-  .ts.show{transform:translateY(0)}
+  .bar .btn{flex:1 1 0;min-height:46px;padding:12px 10px;font-size:14px}
+  .bar .hint{flex:1 1 100%;justify-content:space-between;margin-left:0;font-size:11px;padding-top:2px}
 }
-@media(max-width:380px){
-  body{padding:10px}
-  .tp h1{font-size:16px}
-  textarea{min-height:44dvh}
-}
-@media(prefers-reduced-motion:reduce){.ts{transition:none}}
-</style></head><body>
-<div class="wp">
-<div class="tp"><h1>✏️ 编辑 <span>{{CODE}}</span></h1></div>
-<div class="info">✏️ 修改下面的 HTML 代码，点击"保存"即可立即生效。原链接和编辑密钥保持不变。</div>
-<div class="nrow"><label>页面名称（方便日后查找）</label><input id="nm" maxlength="60" placeholder="例如：公司官网预览 / 游戏 demo" autocomplete="off"></div>
-<textarea id="ta" placeholder="加载中..." spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
-<div class="bar"><button class="btn bp" id="svb" disabled>💾 保存修改</button><a class="btn bg2" href="{{PREVIEW_ORIGIN}}/p/{{CODE}}" target="_blank" rel="noopener" style="text-decoration:none;text-align:center">🔍 预览</a><span class="hint"><span id="size" class="size">0 B</span><span>Ctrl/⌘ + S 保存</span></span></div>
+</style>
+</head>
+<body>
+<div class="page page-wide">
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="{{BRAND}} 首页">
+      <img class="brand-avatar" src="/avatar.svg" alt="">
+      <span class="brand-text">
+        <span class="brand-name">{{BRAND}}</span>
+        <span class="brand-sub">编辑页面</span>
+      </span>
+    </a>
+    <div class="topbar-actions">
+      <a class="btn btn-ghost btn-sm" href="{{PREVIEW_ORIGIN}}/p/{{CODE}}" target="_blank" rel="noopener">🔍 预览</a>
+    </div>
+  </header>
+
+  <main class="card editor-card">
+    <div class="editor-head">
+      <div>
+        <h1>✏️ 编辑页面</h1>
+        <span class="editor-code">{{CODE}}</span>
+      </div>
+    </div>
+    <div class="notice">✏️ 修改下面的 HTML 代码，点击“保存”即可立即生效。原链接和编辑密钥保持不变。</div>
+    <div class="field">
+      <label for="nm">页面名称（方便日后查找）</label>
+      <input class="input" id="nm" maxlength="60" placeholder="例如：公司官网预览 / 游戏 demo" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="ta">HTML 代码</label>
+      <textarea class="input code-area" id="ta" placeholder="加载中..." spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+    </div>
+    <div class="bar">
+      <button class="btn btn-primary" id="svb" type="button" disabled>💾 保存修改</button>
+      <a class="btn btn-ghost" href="{{PREVIEW_ORIGIN}}/p/{{CODE}}" target="_blank" rel="noopener">🔍 预览</a>
+      <span class="hint"><span id="size" class="size">0 B</span><span>Ctrl/⌘ + S 保存</span></span>
+    </div>
+  </main>
 </div>
-<div class="ts" id="ts" role="status" aria-live="polite"></div>
+<div class="toast" id="ts" role="status" aria-live="polite"></div>
 <script>
 (function(){
 var code="{{CODE}}";
@@ -106,7 +106,7 @@ document.addEventListener("keydown",function(e){
 window.addEventListener("beforeunload",function(e){
   if(dirty){e.preventDefault();e.returnValue=""}
 });
-function sts(m,t){var ts=document.getElementById("ts");ts.textContent=m;ts.className="ts show"+(t?" "+t:"");setTimeout(function(){ts.className="ts"+(t?" "+t:"")},2200)}
+function sts(m,t){var ts=document.getElementById("ts");ts.textContent=m;ts.className="toast show"+(t?" "+t:"");setTimeout(function(){ts.className="toast"+(t?" "+t:"")},2200)}
 fetch("/api/get?code="+encodeURIComponent(code),{headers:{"X-Edit-Key":key}}).then(function(r){return r.json()}).then(function(d){
 if(d.success){ta.value=d.html;nm.value=d.name||"";if(d.name)document.title=d.name+" - 编辑";svb.disabled=false;dirty=false;updateSize()}
 else{ta.value="";ta.disabled=true;sts("加载失败："+(d.error||"未知错误"),"error")}
@@ -123,4 +123,5 @@ finally{svb.disabled=false;svb.textContent=old}
 });
 })();
 </script>
-</body></html>
+</body>
+</html>

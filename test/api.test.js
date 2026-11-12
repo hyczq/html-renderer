@@ -174,7 +174,32 @@ test('HTML 渲染器 API 冒烟测试', async (t) => {
       const res = await client.get(page);
       assert.equal(res.status, 200, page);
       assert.match(res.text, /测试渲染器/, page);
+      assert.match(res.text, /href="\/theme\.css"/, page);
+      assert.match(res.text, /src="\/theme\.js"/, page);
     }
+    // 首页与我的页面共用同一套页面骨架，避免布局再次分叉。
+    for (const page of ['/', '/my']) {
+      const res = await client.get(page);
+      assert.match(res.text, /class="page"/, page);
+      assert.match(res.text, /class="topbar"/, page);
+      assert.match(res.text, /class="brand-name"/, page);
+    }
+    // 删除确认使用站内样式化弹窗，而不是无法定制样式的原生 confirm。
+    const myPage = await client.get('/my');
+    assert.match(myPage.text, /id="delModal"/);
+    assert.match(myPage.text, /btn-danger-solid/);
+    assert.equal(myPage.text.includes('confirm('), false, 'my page should not use native confirm');
+    const themeCss = await client.get('/theme.css');
+    assert.equal(themeCss.status, 200);
+    assert.match(String(themeCss.headers.get('content-type')), /text\/css/, 'theme.css content type');
+    assert.match(themeCss.text, /\.topbar/);
+    assert.match(themeCss.text, /\[data-theme="dark"\]/);
+    assert.match(themeCss.text, /\.modal-danger/);
+    assert.match(themeCss.text, /\.btn-danger-solid/);
+    const themeJs = await client.get('/theme.js');
+    assert.equal(themeJs.status, 200);
+    assert.match(String(themeJs.headers.get('content-type')), /javascript/, 'theme.js content type');
+    assert.match(themeJs.text, /localStorage\.setItem\("theme"/);
     const avatar = await client.get('/avatar.svg');
     assert.equal(avatar.status, 200);
     assert.match(avatar.text, /<svg/);
