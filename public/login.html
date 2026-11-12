@@ -2,13 +2,15 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0b0e" media="(prefers-color-scheme: dark)">
 <title>登录 - {{BRAND}}</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#f2f2f7;--bg2:#fff;--card:rgba(255,255,255,.72);--cardh:rgba(255,255,255,.88);--txt:#1c1c1e;--txt2:#3a3a3c;--txt3:#8e8e93;--bd:rgba(60,60,67,.08);--ac:#007aff;--sh:0 20px 50px rgba(0,0,0,.06);--gr:linear-gradient(135deg,#007aff,#5856d6);--tab:rgba(118,118,128,.12);--taba:#fff;--in:rgba(118,118,128,.06);--rb:rgba(0,122,255,.06);--rbd:rgba(0,122,255,.15);--eb:rgba(255,59,48,.06);--ebd:rgba(255,59,48,.15)}
 [data-theme="dark"]{--bg:#0b0b0e;--bg2:#1c1c1e;--card:rgba(28,28,30,.75);--cardh:rgba(44,44,46,.9);--txt:#f5f5f7;--txt2:#aeaeb2;--txt3:#636366;--bd:rgba(255,255,255,.08);--ac:#0a84ff;--sh:0 20px 50px rgba(0,0,0,.7);--tab:rgba(118,118,128,.18);--taba:#2c2c2e;--in:rgba(118,118,128,.1);--rb:rgba(10,132,255,.1);--rbd:rgba(10,132,255,.2);--eb:rgba(255,69,58,.08);--ebd:rgba(255,69,58,.18)}
-body{font-family:-apple-system,Helvetica Neue,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;display:flex;justify-content:center;align-items:center;padding:24px 16px;transition:background .35s,color .35s}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;display:flex;justify-content:center;align-items:center;padding:24px 16px;transition:background .35s,color .35s}
 .box{max-width:520px;width:100%;background:var(--card);backdrop-filter:saturate(180%) blur(24px);-webkit-backdrop-filter:saturate(180%) blur(24px);border-radius:44px;padding:40px 36px;box-shadow:var(--sh),inset 0 0 0 .5px rgba(255,255,255,.1);border:.5px solid var(--bd)}
 .hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:30px}
 .br{display:flex;align-items:center;gap:14px}
@@ -42,6 +44,33 @@ input:focus{outline:none;border-color:var(--ac);background:var(--bg2);box-shadow
 .tip{margin-top:22px;font-size:12px;color:var(--txt3);text-align:center;line-height:1.6}
 .tip a{color:var(--ac);text-decoration:none;font-weight:600}
 @media(max-width:600px){body{padding:16px 12px}.box{padding:28px 20px;border-radius:32px}.bn{font-size:19px}}
+/* ---------- 移动端适配 ---------- */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+button,a{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+button:focus-visible,a:focus-visible{outline:2px solid var(--ac);outline-offset:3px}
+body{min-height:100vh;min-height:100dvh;overflow-x:hidden}
+@media(max-width:600px){
+  body{padding:16px max(12px,env(safe-area-inset-left)) max(16px,env(safe-area-inset-bottom));align-items:flex-start}
+  .box{padding:24px 18px;border-radius:28px}
+  .hd{margin-bottom:24px;gap:8px}
+  .bn{font-size:19px}
+  .bs{font-size:11px}
+  .tc{margin-bottom:22px}
+  .tb{min-height:40px;font-size:13px}
+  input{font-size:16px;min-height:48px}
+  .eye{width:44px;height:44px;right:2px}
+  .btn{min-height:50px;font-size:16px}
+  .tip{font-size:11px;margin-top:18px}
+}
+@media(max-width:380px){
+  body{padding:10px}
+  .box{padding:20px 14px;border-radius:24px}
+  .av{width:40px;height:40px}
+  .bn{font-size:17px}
+  .bs{display:none}
+}
+@media(max-height:640px){body{align-items:flex-start;padding-top:max(16px,env(safe-area-inset-top))}}
+@media(prefers-reduced-motion:reduce){.btn,.tb{transition:none}}
 </style>
 </head>
 <body>
@@ -58,16 +87,16 @@ input:focus{outline:none;border-color:var(--ac);background:var(--bg2);box-shadow
     <button class="tb" data-tab="reg">注册</button>
   </div>
   <div class="pn active" id="p-login">
-    <div class="ig"><label for="lu">用户名</label><input id="lu" autocomplete="username" placeholder="请输入用户名" autofocus></div>
-    <div class="ig"><label for="lp">密码</label><div class="pw"><input id="lp" type="password" autocomplete="current-password" placeholder="请输入密码"><button type="button" class="eye" data-for="lp" aria-label="显示密码">👁️</button></div></div>
+    <div class="ig"><label for="lu">用户名</label><input id="lu" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="请输入用户名"></div>
+    <div class="ig"><label for="lp">密码</label><div class="pw"><input id="lp" type="password" autocapitalize="off" spellcheck="false" autocomplete="current-password" placeholder="请输入密码"><button type="button" class="eye" data-for="lp" aria-label="显示密码">👁️</button></div></div>
   </div>
   <div class="pn" id="p-reg">
-    <div class="ig"><label for="ru">用户名</label><input id="ru" autocomplete="username" placeholder="3-32 位，中英文 / 数字 / _ / -"></div>
-    <div class="ig"><label for="rp">密码</label><div class="pw"><input id="rp" type="password" autocomplete="new-password" placeholder="至少 6 位"><button type="button" class="eye" data-for="rp" aria-label="显示密码">👁️</button></div></div>
-    <div class="ig"><label for="rp2">确认密码</label><div class="pw"><input id="rp2" type="password" autocomplete="new-password" placeholder="再次输入密码"><button type="button" class="eye" data-for="rp2" aria-label="显示密码">👁️</button></div></div>
+    <div class="ig"><label for="ru">用户名</label><input id="ru" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="3-32 位，中英文 / 数字 / _ / -"></div>
+    <div class="ig"><label for="rp">密码</label><div class="pw"><input id="rp" type="password" autocapitalize="off" spellcheck="false" autocomplete="new-password" placeholder="至少 6 位"><button type="button" class="eye" data-for="rp" aria-label="显示密码">👁️</button></div></div>
+    <div class="ig"><label for="rp2">确认密码</label><div class="pw"><input id="rp2" type="password" autocapitalize="off" spellcheck="false" autocomplete="new-password" placeholder="再次输入密码"><button type="button" class="eye" data-for="rp2" aria-label="显示密码">👁️</button></div></div>
   </div>
   <button class="btn" id="go">登录</button>
-  <div class="rb" id="res"><div class="ri"></div></div>
+  <div class="rb" id="res" role="status" aria-live="polite"><div class="ri"></div></div>
   <p class="tip">登录后可随时找回历史链接，避免重复生成<br><a href="/">← 返回首页继续免登录生成</a></p>
 </div>
 <script>

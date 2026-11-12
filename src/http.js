@@ -4,40 +4,78 @@
  * HTTP 请求/响应工具：JSON、文本、HTML 输出与请求体读取。
  */
 
+const zlib = require('node:zlib');
 const { MAX_BODY, MAX_BYTES, TRUST_PROXY } = require('./config');
 
+const MIN_COMPRESS_BYTES = 1024;
+const COMPRESSIBLE_TYPE = /^(?:text\/|application\/(?:json|javascript|xml|xhtml\+xml)|image\/svg\+xml)/i;
+
+/** 解析 Accept-Encoding，仅接受显式 gzip（q=0 视为拒绝）。 */
+function acceptsGzip(req) {
+  const header = String(req.headers['accept-encoding'] || '').toLowerCase();
+  if (!header.includes('gzip')) return false;
+  const part = header
+    .split(',')
+    .map((s) => s.trim())
+    .find((s) => s.startsWith('gzip'));
+  if (!part) return false;
+  const q = part.match(/q=([0-9.]+)/);
+  return !q || Number(q[1]) > 0;
+}
+
+/** 统一写出响应体；文本类且超过阈值时按需 gzip，减少移动端流量。 */
+function sendBody(res, body, status, headers) {
+  const req = res.req;
+  let buf = Buffer.isBuffer(body) ? body : Buffer.from(String(body));
+  const out = { ...headers };
+  const type = out['Content-Type'] || '';
+  if (
+    req &&
+    buf.length >= MIN_COMPRESS_BYTES &&
+    COMPRESSIBLE_TYPE.test(type) &&
+    acceptsGzip(req)
+  ) {
+    try {
+      const gz = zlib.gzipSync(buf, { level: 6 });
+      if (gz.length < buf.length) {
+        buf = gz;
+        out['Content-Encoding'] = 'gzip';
+        out['Vary'] = out['Vary'] ? out['Vary'] + ', Accept-Encoding' : 'Accept-Encoding';
+      }
+    } catch {
+      // 压缩失败时回退为原始响应，不影响功能
+    }
+  }
+  out['Content-Length'] = buf.length;
+  res.writeHead(status, out);
+  res.end(buf);
+}
+
 function sendJson(res, obj, status = 200, extra = {}) {
-  const body = JSON.stringify(obj);
-  res.writeHead(status, {
+  sendBody(res, JSON.stringify(obj), status, {
     'Content-Type': 'application/json;charset=UTF-8',
-    'Content-Length': Buffer.byteLength(body),
     'Cache-Control': 'no-store',
     'X-Content-Type-Options': 'nosniff',
     ...extra,
   });
-  res.end(body);
 }
 
 function sendText(res, text, status = 200, type = 'text/plain;charset=UTF-8') {
-  res.writeHead(status, {
+  sendBody(res, text, status, {
     'Content-Type': type,
-    'Content-Length': Buffer.byteLength(text),
     'X-Content-Type-Options': 'nosniff',
   });
-  res.end(text);
 }
 
 function sendHtml(res, html, extra = {}) {
-  res.writeHead(200, {
+  sendBody(res, html, 200, {
     'Content-Type': 'text/html;charset=UTF-8',
-    'Content-Length': Buffer.byteLength(html),
     'Cache-Control': 'no-store',
     'X-Content-Type-Options': 'nosniff',
     'Referrer-Policy': 'no-referrer',
     'X-Frame-Options': 'DENY',
     ...extra,
   });
-  res.end(html);
 }
 
 /** 读取请求体，超过 limit 时抛出 code=TOO_LARGE。 */

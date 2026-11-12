@@ -9,6 +9,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { spawn } = require('node:child_process');
 const net = require('node:net');
+const http = require('node:http');
+const zlib = require('node:zlib');
 const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
@@ -49,6 +51,20 @@ async function stopServer(child) {
       clearTimeout(timer);
       resolve();
     });
+  });
+}
+
+function rawGet(url, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const req = http.get(url, { headers }, (res) => {
+      const chunks = [];
+      res.on('data', (chunk) => chunks.push(chunk));
+      res.on('end', () =>
+        resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks) })
+      );
+    });
+    req.on('error', reject);
+    req.setTimeout(5000, () => req.destroy(new Error('request timeout')));
   });
 }
 
@@ -140,6 +156,8 @@ test('HTML 渲染器 API 冒烟测试', async (t) => {
     const home = await client.get('/');
     assert.equal(home.status, 200);
     assert.match(home.text, /测试渲染器/);
+    assert.match(home.text, /viewport-fit=cover/);
+    assert.match(home.text, /@media\(max-width:600px\)/);
 
     for (const page of ['/login', '/my']) {
       const res = await client.get(page);
@@ -149,6 +167,24 @@ test('HTML 渲染器 API 冒烟测试', async (t) => {
     const avatar = await client.get('/avatar.svg');
     assert.equal(avatar.status, 200);
     assert.match(avatar.text, /<svg/);
+  });
+
+  await t.test('文本响应支持 gzip 压缩', async () => {
+    const compressed = await rawGet(baseUrl + '/', { 'Accept-Encoding': 'gzip' });
+    assert.equal(compressed.status, 200);
+    assert.equal(compressed.headers['content-encoding'], 'gzip');
+    assert.match(String(compressed.headers.vary || ''), /Accept-Encoding/);
+    const text = zlib.gunzipSync(compressed.body).toString('utf8');
+    assert.match(text, /测试渲染器/);
+
+    const plain = await rawGet(baseUrl + '/', { 'Accept-Encoding': 'identity' });
+    assert.equal(plain.status, 200);
+    assert.equal(plain.headers['content-encoding'], undefined);
+    assert.match(plain.body.toString('utf8'), /测试渲染器/);
+    assert.ok(compressed.body.length < plain.body.length);
+
+    const disabled = await rawGet(baseUrl + '/', { 'Accept-Encoding': 'gzip;q=0' });
+    assert.equal(disabled.headers['content-encoding'], undefined);
   });
 
   const pageA =

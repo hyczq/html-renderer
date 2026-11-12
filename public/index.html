@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0b0b0e" media="(prefers-color-scheme: dark)">
 <title>{{BRAND}}</title>
@@ -10,7 +10,7 @@
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#f2f2f7;--bg2:#fff;--card:rgba(255,255,255,.72);--cardh:rgba(255,255,255,.88);--txt:#1c1c1e;--txt2:#3a3a3c;--txt3:#8e8e93;--bd:rgba(60,60,67,.08);--ac:#007aff;--sh:0 20px 50px rgba(0,0,0,.06);--gr:linear-gradient(135deg,#007aff,#5856d6);--tab:rgba(118,118,128,.12);--taba:#fff;--in:rgba(118,118,128,.06);--rb:rgba(0,122,255,.06);--rbd:rgba(0,122,255,.15);--eb:rgba(255,59,48,.06);--ebd:rgba(255,59,48,.15);--mb:rgba(255,255,255,.85);--mt:#007aff;--mbd:rgba(0,122,255,.15);--key-bg:rgba(52,199,89,.1);--key-bd:rgba(52,199,89,.3);--key-tx:#34c759}
 [data-theme="dark"]{--bg:#0b0b0e;--bg2:#1c1c1e;--card:rgba(28,28,30,.75);--cardh:rgba(44,44,46,.9);--txt:#f5f5f7;--txt2:#aeaeb2;--txt3:#636366;--bd:rgba(255,255,255,.08);--ac:#0a84ff;--sh:0 20px 50px rgba(0,0,0,.7);--tab:rgba(118,118,128,.18);--taba:#2c2c2e;--in:rgba(118,118,128,.1);--rb:rgba(10,132,255,.1);--rbd:rgba(10,132,255,.2);--eb:rgba(255,69,58,.08);--ebd:rgba(255,69,58,.18);--mb:rgba(28,28,30,.85);--mt:#0a84ff;--mbd:rgba(10,132,255,.2);--key-bg:rgba(52,199,89,.15);--key-bd:rgba(52,199,89,.4);--key-tx:#30d158}
-body{font-family:-apple-system,Helvetica Neue,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;display:flex;justify-content:center;align-items:center;padding:24px 16px;padding-top:80px;transition:background .35s,color .35s}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;display:flex;justify-content:center;align-items:center;padding:24px 16px;padding-top:80px;transition:background .35s,color .35s}
 .mw{position:fixed;top:0;left:0;right:0;z-index:999;background:var(--mb);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--mbd);box-shadow:0 2px 12px rgba(0,122,255,.08);padding:8px 0;overflow:hidden}
 .mc{display:flex;align-items:center;justify-content:center;gap:12px;font-weight:600;font-size:.88rem;white-space:nowrap;overflow:hidden;padding:0 12px}
 .ml{display:inline-block;padding-left:100%;animation:mq 20s linear infinite;color:var(--mt);text-decoration:none;font-weight:600}
@@ -70,6 +70,49 @@ textarea:focus{outline:none;border-color:var(--ac);background:var(--bg2);box-sha
 .ig input{width:100%;padding:15px 18px;border:1.5px solid var(--bd);border-radius:18px;font-size:15px;font-family:inherit;background:var(--in);color:var(--txt);line-height:1.4}
 .ig input:focus{outline:none;border-color:var(--ac);background:var(--bg2);box-shadow:0 0 0 4px rgba(0,122,255,.08)}
 .hintline{margin-top:12px;font-size:12px;color:var(--txt3);text-align:center;line-height:1.6}.hintline a{color:var(--ac);text-decoration:none;font-weight:600}.warn a{color:inherit;font-weight:700;text-decoration:underline}@media(max-width:420px){.av{width:40px;height:40px}.bn{font-size:18px}.ub{max-width:84px;font-size:11.5px;padding:6px 8px}}
+/* ---------- 移动端适配 ---------- */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+button,a{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+button:focus-visible,a:focus-visible,[role="button"]:focus-visible{outline:2px solid var(--ac);outline-offset:3px}
+body{min-height:100vh;min-height:100dvh;overflow-x:hidden}
+@media(max-width:600px){
+  body{padding:16px max(12px,env(safe-area-inset-left)) max(24px,env(safe-area-inset-bottom));padding-top:calc(64px + env(safe-area-inset-top));align-items:flex-start}
+  .mw{padding-top:max(8px,env(safe-area-inset-top))}
+  .box{padding:24px 18px;border-radius:28px}
+  .hd{gap:10px;margin-bottom:24px;flex-wrap:wrap;row-gap:10px}
+  .ha{margin-left:auto}
+  .br,.bt{min-width:0}
+  .bn{font-size:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52vw}
+  .bs{font-size:11px}
+  .tc{margin-bottom:24px}
+  .tb{min-height:40px;font-size:12.5px}
+  .ig{margin-bottom:20px}
+  textarea,.ig input{font-size:16px}
+  .dz{min-height:150px;padding:18px 12px}
+  .btn{font-size:16px;min-height:50px;padding:14px 18px}
+  .ri{padding:14px}
+  .rk{padding:12px}
+  .rk a{font-size:13px}
+  .cb{min-height:38px;padding:8px 14px}
+  .rl{font-size:11px}
+  .mc{font-size:.7rem}
+  .ml{animation-duration:28s}
+}
+@media(max-width:380px){
+  body{padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right))}
+  .box{padding:20px 14px;border-radius:24px}
+  .av{width:38px;height:38px}
+  .bn{font-size:17px;max-width:46vw}
+  .bs{display:none}
+  .ub{max-width:76px;font-size:11px;padding:6px 8px}
+  .tt{width:40px;height:40px;font-size:18px}
+  .tb{font-size:11.5px;padding:8px 2px}
+  .rk .cb{align-self:stretch}
+}
+@media(prefers-reduced-motion:reduce){
+  .ml{animation:none;padding-left:0}
+  .btn,.tt,.tb,.rk{transition:none}
+}
 </style>
 <link rel="icon" href="/avatar.svg">
 </head>
@@ -85,13 +128,13 @@ textarea:focus{outline:none;border-color:var(--ac);background:var(--bg2);box-sha
 <div class="bt"><span class="bn">{{BRAND}}</span><span class="bs">永久链接 · 自动去重 · 历史记录</span></div>
 </div><div class="ha"><a class="ub" id="ub" href="/login">👤 登录</a><button class="tt" id="tt" aria-label="切换深色模式"><span id="ti">🌙</span></button></div></header>
 <div class="tc"><button class="tb active" data-tab="url">🌐 从 URL</button><button class="tb" data-tab="code">📝 粘贴代码</button><button class="tb" data-tab="upload">📤 上传文件</button></div>
-<div class="pn active" id="p-url"><div class="ig"><label>GitHub / Bitbucket 原始链接</label><textarea id="urlInput" placeholder="https://raw.githubusercontent.com/用户/仓库/分支/文件.html"></textarea></div></div>
-<div class="pn" id="p-code"><div class="ig"><label>直接粘贴 HTML 代码</label><textarea id="codeInput" placeholder="&lt;!DOCTYPE html&gt;&#10;&lt;html&gt;&#10;&lt;head&gt;&lt;title&gt;我的页面&lt;/title&gt;&lt;/head&gt;&#10;&lt;body&gt;&lt;h1&gt;Hello World&lt;/h1&gt;&lt;/body&gt;&#10;&lt;/html&gt;"></textarea></div></div>
-<div class="pn" id="p-upload"><div class="ig"><label>上传 HTML 文件（最大 2MB）</label><div class="dz" id="dz"><div class="di">📄</div><div class="dt">拖拽或点击选择文件</div><div class="dh">支持 .html / .htm · 最大 2MB</div><input type="file" id="fi" accept=".html,.htm" style="display:none"></div><div class="fn" id="fn"></div></div></div>
-<div class="ig"><label>页面名称（可选）</label><input id="pageName" maxlength="60" placeholder="例如：公司官网预览 / 游戏 demo，方便日后查找"></div>
+<div class="pn active" id="p-url"><div class="ig"><label>GitHub / Bitbucket 原始链接</label><textarea id="urlInput" placeholder="https://raw.githubusercontent.com/用户/仓库/分支/文件.html" inputmode="url" autocapitalize="off" spellcheck="false" autocomplete="off"></textarea></div></div>
+<div class="pn" id="p-code"><div class="ig"><label>直接粘贴 HTML 代码</label><textarea id="codeInput" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="&lt;!DOCTYPE html&gt;&#10;&lt;html&gt;&#10;&lt;head&gt;&lt;title&gt;我的页面&lt;/title&gt;&lt;/head&gt;&#10;&lt;body&gt;&lt;h1&gt;Hello World&lt;/h1&gt;&lt;/body&gt;&#10;&lt;/html&gt;"></textarea></div></div>
+<div class="pn" id="p-upload"><div class="ig"><label>上传 HTML 文件（最大 2MB）</label><div class="dz" id="dz" role="button" tabindex="0" aria-label="选择 HTML 文件"><div class="di">📄</div><div class="dt">拖拽或点击选择文件</div><div class="dh">支持 .html / .htm · 最大 2MB</div><input type="file" id="fi" accept=".html,.htm" style="display:none"></div><div class="fn" id="fn"></div></div></div>
+<div class="ig"><label>页面名称（可选）</label><input id="pageName" maxlength="60" placeholder="例如：公司官网预览 / 游戏 demo，方便日后查找" autocomplete="off"></div>
 <button class="btn" id="genBtn">🚀 生成永久链接</button>
 <p class="tip2">登录后自动保存历史记录；相同内容自动复用，不重复存储 · Ctrl/⌘ + Enter 快速生成</p>
-<div class="rb" id="genResult"><div class="ri"></div></div>
+<div class="rb" id="genResult" role="status" aria-live="polite"><div class="ri"></div></div>
 </div>
 <script>
 (function(){
@@ -187,6 +230,7 @@ rd.readAsText(sf2);
 });
 var dz=document.getElementById("dz"),fi=document.getElementById("fi"),fnn=document.getElementById("fn");
 dz.addEventListener("click",function(){fi.click()});
+dz.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();fi.click()}});
 dz.addEventListener("dragover",function(e){e.preventDefault();dz.style.borderColor="var(--ac)"});
 dz.addEventListener("dragleave",function(){dz.style.borderColor=""});
 dz.addEventListener("drop",function(e){e.preventDefault();dz.style.borderColor="";if(e.dataTransfer.files.length>0)hf(e.dataTransfer.files[0])});

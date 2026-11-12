@@ -1,17 +1,19 @@
 <!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0b0e" media="(prefers-color-scheme: dark)">
 <title>编辑 - {{BRAND}}</title><style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#f2f2f7;--card:#fff;--txt:#1c1c1e;--txt2:#3a3a3c;--txt3:#8e8e93;--bd:rgba(60,60,67,.08);--ac:#007aff;--dg:#ff3b30;--sc:#34c759}
 [data-theme="dark"]{--bg:#0b0b0e;--card:#1c1c1e;--txt:#f5f5f7;--txt2:#aeaeb2;--txt3:#636366;--bd:rgba(255,255,255,.08);--ac:#0a84ff}
-body{font-family:-apple-system,Helvetica Neue,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;padding:20px;display:flex;flex-direction:column;align-items:center}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;padding:20px;display:flex;flex-direction:column;align-items:center}
 .wp{max-width:900px;width:100%}
 .tp{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px;flex-wrap:wrap}
 .tp h1{font-size:20px;font-weight:700}
 .tp h1 span{color:var(--ac);font-family:SF Mono,monospace}
 .info{padding:12px 16px;background:rgba(0,122,255,.08);border:1px solid rgba(0,122,255,.2);border-radius:12px;font-size:13px;color:var(--ac);margin-bottom:16px;line-height:1.5}
 .info.warn{background:rgba(255,59,48,.08);border-color:rgba(255,59,48,.25);color:#ff3b30}
-textarea{width:100%;min-height:60vh;padding:16px;border:1.5px solid var(--bd);border-radius:14px;background:var(--card);color:var(--txt);font-family:SF Mono,Menlo,monospace;font-size:13px;line-height:1.6;resize:vertical}
+textarea{width:100%;min-height:60vh;padding:16px;border:1.5px solid var(--bd);border-radius:14px;background:var(--card);color:var(--txt);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;line-height:1.6;resize:vertical}
 textarea:focus{outline:none;border-color:var(--ac);box-shadow:0 0 0 4px rgba(0,122,255,.1)}
 .nrow{margin-bottom:14px}
 .nrow label{display:block;font-size:13px;font-weight:600;color:var(--txt2);margin-bottom:8px}
@@ -33,15 +35,40 @@ textarea:focus{outline:none;border-color:var(--ac);box-shadow:0 0 0 4px rgba(0,1
 .ts.error{background:var(--dg);color:#fff}
 .ts.success{background:var(--sc);color:#fff}
 @media(max-width:600px){body{padding:12px}.tp h1{font-size:17px}textarea{min-height:50vh;font-size:12px}}
+/* ---------- 移动端适配 ---------- */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+button,a{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+button:focus-visible,a:focus-visible{outline:2px solid var(--ac);outline-offset:3px}
+body{min-height:100vh;min-height:100dvh;overflow-x:hidden;padding-bottom:max(20px,env(safe-area-inset-bottom))}
+@media(max-width:600px){
+  body{padding:12px max(12px,env(safe-area-inset-left)) max(16px,env(safe-area-inset-bottom))}
+  .tp{margin-bottom:12px}
+  .tp h1{font-size:17px}
+  .info{font-size:12px;padding:10px 12px;margin-bottom:12px}
+  .nrow{margin-bottom:12px}
+  .nrow input{font-size:16px;min-height:46px}
+  textarea{min-height:48vh;min-height:48dvh;font-size:16px;padding:12px;line-height:1.5}
+  .bar{gap:8px}
+  .bar .btn{flex:1 1 0;min-height:46px;padding:12px 10px;font-size:15px;text-align:center}
+  .hint{margin-left:0;width:100%;justify-content:space-between;font-size:11px;padding-top:2px}
+  .ts{left:12px;right:12px;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateY(120px);max-width:none;width:auto;padding:12px 16px;border-radius:16px;font-size:13px}
+  .ts.show{transform:translateY(0)}
+}
+@media(max-width:380px){
+  body{padding:10px}
+  .tp h1{font-size:16px}
+  textarea{min-height:44dvh}
+}
+@media(prefers-reduced-motion:reduce){.ts{transition:none}}
 </style></head><body>
 <div class="wp">
 <div class="tp"><h1>✏️ 编辑 <span>{{CODE}}</span></h1></div>
 <div class="info">✏️ 修改下面的 HTML 代码，点击"保存"即可立即生效。原链接和编辑密钥保持不变。</div>
-<div class="nrow"><label>页面名称（方便日后查找）</label><input id="nm" maxlength="60" placeholder="例如：公司官网预览 / 游戏 demo"></div>
-<textarea id="ta" placeholder="加载中..."></textarea>
+<div class="nrow"><label>页面名称（方便日后查找）</label><input id="nm" maxlength="60" placeholder="例如：公司官网预览 / 游戏 demo" autocomplete="off"></div>
+<textarea id="ta" placeholder="加载中..." spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
 <div class="bar"><button class="btn bp" id="svb" disabled>💾 保存修改</button><a class="btn bg2" href="/p/{{CODE}}" target="_blank" rel="noopener" style="text-decoration:none;text-align:center">🔍 预览</a><span class="hint"><span id="size" class="size">0 B</span><span>Ctrl/⌘ + S 保存</span></span></div>
 </div>
-<div class="ts" id="ts"></div>
+<div class="ts" id="ts" role="status" aria-live="polite"></div>
 <script>
 (function(){
 var code="{{CODE}}";
