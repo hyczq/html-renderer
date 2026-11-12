@@ -56,16 +56,30 @@ function isPreviewHost(req) {
   return actual === expected || stripDefaultPort(actual) === stripDefaultPort(expected);
 }
 
-async function servePreview(res, code) {
+async function servePreview(req, res, code) {
   const paste = await store.readPaste(code);
   if (!paste) return sendText(res, '页面不存在或已过期', 404);
+
+  // hash 已知时先判断缓存，避免 304 还去读 2MB 正文。
+  const hashEtag = paste.hash ? '"' + paste.hash + '"' : '';
+  if (hashEtag && String(req.headers['if-none-match'] || '').includes(hashEtag)) {
+    res.writeHead(304, { ETag: hashEtag, 'Cache-Control': 'no-cache' });
+    return res.end();
+  }
+
   const html = await store.pasteContent(paste);
+  if (html === null) {
+    console.error('[preview] blob missing', code, paste.hash);
+    return sendText(res, '页面内容不可用，请从备份恢复', 500);
+  }
+  const etag = hashEtag || '"' + store.sha256(html) + '"';
   return sendHtml(res, html, {
     'Content-Security-Policy': CSP_PREVIEW,
     'Referrer-Policy': 'no-referrer',
     'X-Frame-Options': 'DENY',
     'X-Robots-Tag': 'noindex, nofollow',
     'Cache-Control': 'no-cache',
+    ETag: etag,
   });
 }
 
@@ -89,7 +103,7 @@ function createServer() {
       // 预览域名是独立 origin：只允许只读预览，其他一律 404。
       if (isPreviewHost(req)) {
         if ((req.method === 'GET' || req.method === 'HEAD') && previewMatch) {
-          return servePreview(res, previewMatch[1]);
+          return servePreview(req, res, previewMatch[1]);
         }
         return sendText(res, 'Not Found', 404);
       }
@@ -124,7 +138,7 @@ function createServer() {
           if (config.PREVIEW_ORIGIN) {
             return sendRedirect(res, config.PREVIEW_ORIGIN + '/p/' + encodeURIComponent(previewMatch[1]));
           }
-          return servePreview(res, previewMatch[1]);
+          return servePreview(req, res, previewMatch[1]);
         }
 
         const e = pathname.match(/^\/edit\/([A-Za-z0-9]{4,32})\/?$/);

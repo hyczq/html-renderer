@@ -11,6 +11,7 @@ const { spawn, spawnSync } = require('node:child_process');
 const net = require('node:net');
 const http = require('node:http');
 const zlib = require('node:zlib');
+const crypto = require('node:crypto');
 const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
@@ -216,6 +217,13 @@ test('HTML 渲染器 API 冒烟测试', async (t) => {
     assert.doesNotMatch(previewCsp, /allow-same-origin/);
     assert.equal(preview.headers.get('set-cookie'), null);
 
+    const etag = preview.headers.get('etag');
+    assert.ok(etag, '预览响应应带 ETag');
+    const notModified = await rawGet(baseUrl + '/p/' + gen.json.code, {
+      'If-None-Match': etag,
+    });
+    assert.equal(notModified.status, 304);
+
     const editPage = await anon.get(`/edit/${gen.json.code}?key=${gen.json.editKey}`);
     assert.equal(editPage.status, 200);
     assert.match(editPage.text, new RegExp(gen.json.code));
@@ -322,7 +330,7 @@ test('HTML 渲染器 API 冒烟测试', async (t) => {
   await t.test('URL 抓取拦截内网地址（SSRF）', async () => {
     const res = await anon.post('/generate', {
       type: 'url',
-      url: `http://127.0.0.1:${port}/healthz`,
+      url: 'http://127.0.0.1/healthz',
     });
     assert.equal(res.json.success, false);
     assert.match(res.json.error, /不允许访问该地址/);
@@ -529,4 +537,156 @@ test('HTTPS 代理下会话 Cookie 使用 __Host- 前缀', async (t) => {
   const cleared = logout.headers['set-cookie'] || [];
   assert.ok(cleared.some((c) => c.startsWith('hr_session=')));
   assert.ok(cleared.some((c) => c.startsWith('__Host-hr_session=')));
+});
+
+test('SSRF：IPv6 私网覆盖与端口白名单', async () => {
+  const { isPrivateIp, isAllowedPort, fetchHtml, resolvePublicHost } = require(
+    path.join(ROOT, 'src/fetch-html.js')
+  );
+
+  const blocked = [
+    '127.0.0.1',
+    '10.0.0.1',
+    '169.254.169.254',
+    '::1',
+    '::',
+    '::ffff:127.0.0.1',
+    '::ffff:7f00:1',
+    '2002:7f00:1::',
+    '64:ff9b::7f00:1',
+    'fec0::1',
+    'fe80::1',
+    'fc00::1',
+    'ff02::1',
+    '2001:db8::1',
+  ];
+  for (const ip of blocked) assert.equal(isPrivateIp(ip), true, ip);
+
+  for (const ip of ['8.8.8.8', '2001:4860:4860::8888', '::ffff:8.8.8.8']) {
+    assert.equal(isPrivateIp(ip), false, ip);
+  }
+
+  assert.equal(isAllowedPort(new URL('http://example.com/')), true);
+  assert.equal(isAllowedPort(new URL('https://example.com:443/')), true);
+  assert.equal(isAllowedPort(new URL('http://example.com:22/')), false);
+
+  await assert.rejects(resolvePublicHost('localhost'), /不允许访问该地址/);
+  await assert.rejects(resolvePublicHost('127.0.0.1'), /不允许访问该地址/);
+  await assert.rejects(fetchHtml('http://example.com:22/'), /端口不允许访问/);
+  await assert.rejects(fetchHtml('ftp://example.com/'), /仅支持 http\/https/);
+});
+
+test('重启后从 pastes/ 重建索引', async (t) => {
+  const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'html-renderer-restart-'));
+  const port = await freePort();
+  const baseUrl = `http://127.0.0.1:${port}`;
+  const env = {
+    ...process.env,
+    PORT: String(port),
+    HOST: '127.0.0.1',
+    DATA_DIR: dataDir,
+    TRUST_PROXY: '0',
+  };
+  const start = () =>
+    spawn(process.execPath, [path.join(ROOT, 'server.js')], {
+      cwd: ROOT,
+      env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+  let child = start();
+  t.after(async () => {
+    await stopServer(child);
+    await fs.rm(dataDir, { recursive: true, force: true });
+  });
+  await waitForHealth(baseUrl);
+
+  const username = 'restart_' + Date.now().toString(36);
+  const password = 'test-pass-123';
+  const client = createClient(baseUrl);
+  const reg = await client.post('/api/register', { username, password });
+  assert.equal(reg.json.success, true, reg.text);
+  const page = '<html><head><title>重启测试</title></head><body>restart</body></html>';
+  const gen = await client.post('/generate', { type: 'code', code: page });
+  assert.equal(gen.json.success, true, gen.text);
+  const code = gen.json.code;
+
+  await stopServer(child);
+  child = start();
+  await waitForHealth(baseUrl);
+
+  const client2 = createClient(baseUrl);
+  const login = await client2.post('/api/login', { username, password });
+  assert.equal(login.json.success, true, login.text);
+  const my = await client2.json('/api/my');
+  assert.equal(my.json.success, true);
+  assert.equal(my.json.total, 1);
+  assert.equal(my.json.items[0].code, code);
+  const preview = await client2.get('/p/' + code);
+  assert.equal(preview.status, 200);
+  assert.equal(preview.text, page);
+});
+
+test('blob 引用计数：删除一个引用不删正文，最后一个引用才回收', async (t) => {
+  const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'html-renderer-gc-'));
+  const port = await freePort();
+  const baseUrl = `http://127.0.0.1:${port}`;
+  const page = '<html><head><title>GC 测试</title></head><body>shared</body></html>';
+  const hash = crypto.createHash('sha256').update(page, 'utf8').digest('hex');
+  const blobPath = path.join(dataDir, 'blobs', hash + '.html');
+  const child = spawn(process.execPath, [path.join(ROOT, 'server.js')], {
+    cwd: ROOT,
+    env: {
+      ...process.env,
+      PORT: String(port),
+      HOST: '127.0.0.1',
+      DATA_DIR: dataDir,
+      TRUST_PROXY: '0',
+      BLOB_GC_GRACE_MS: '0',
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  t.after(async () => {
+    await stopServer(child);
+    await fs.rm(dataDir, { recursive: true, force: true });
+  });
+  await waitForHealth(baseUrl);
+
+  const a = createClient(baseUrl);
+  const b = createClient(baseUrl);
+  const regA = await a.post('/api/register', {
+    username: 'gc_a_' + Date.now().toString(36),
+    password: 'test-pass-123',
+  });
+  const regB = await b.post('/api/register', {
+    username: 'gc_b_' + Date.now().toString(36),
+    password: 'test-pass-123',
+  });
+  assert.equal(regA.json.success, true, regA.text);
+  assert.equal(regB.json.success, true, regB.text);
+
+  const genA = await a.post('/generate', { type: 'code', code: page });
+  const genB = await b.post('/generate', { type: 'code', code: page });
+  assert.equal(genA.json.success, true, genA.text);
+  assert.equal(genB.json.success, true, genB.text);
+  assert.notEqual(genA.json.code, genB.json.code);
+  assert.equal(await fs.readFile(blobPath, 'utf8'), page);
+
+  const delA = await a.post('/api/delete', { code: genA.json.code });
+  assert.equal(delA.json.success, true, delA.text);
+  await new Promise((r) => setTimeout(r, 1500));
+  assert.equal(await fs.readFile(blobPath, 'utf8'), page, '仍有引用时不应删除 blob');
+
+  const delB = await b.post('/api/delete', { code: genB.json.code });
+  assert.equal(delB.json.success, true, delB.text);
+  let gone = false;
+  for (let i = 0; i < 30; i++) {
+    try {
+      await fs.access(blobPath);
+      await new Promise((r) => setTimeout(r, 100));
+    } catch {
+      gone = true;
+      break;
+    }
+  }
+  assert.equal(gone, true, '最后一个引用删除后应回收 blob');
 });

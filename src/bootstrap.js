@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * 启动初始化：建目录、加载/生成会话密钥、迁移旧数据、补全页面名称。
+ * 启动初始化：建目录、加载/生成会话密钥、迁移旧数据、重建索引、补全页面名称。
  */
 
 const fsp = require('node:fs/promises');
@@ -37,18 +37,15 @@ async function migrateLegacy() {
 
 /** 为没有 name 字段的旧记录补上 <title>。 */
 async function backfillNames() {
-  const files = await fsp.readdir(config.PASTE_DIR).catch(() => []);
-  for (const f of files) {
-    if (!f.endsWith('.json')) continue;
-    const file = path.join(config.PASTE_DIR, f);
+  for (const paste of store.allPastes()) {
+    if (typeof paste.name === 'string') continue;
     try {
-      const p = JSON.parse(await fsp.readFile(file, 'utf8'));
-      if (typeof p.name === 'string') continue;
-      p.name = store.extractTitle(await store.pasteContent(p));
-      await store.writeJsonAtomic(file, p);
-      if (p.name) console.log('[backfill] name', p.code, '=', p.name);
+      const html = await store.pasteContent(paste);
+      const name = store.extractTitle(html || '');
+      await store.withLock(() => store.renamePasteLocked(paste.code, name));
+      if (name) console.log('[backfill] name', paste.code, '=', name);
     } catch (e) {
-      console.error('[backfill] failed', f, e && e.message);
+      console.error('[backfill] failed', paste.code, e && e.message);
     }
   }
 }
@@ -60,6 +57,11 @@ async function init() {
   await fsp.mkdir(config.USER_PASTE_DIR, { recursive: true, mode: 0o700 });
   await auth.loadSecret();
   await migrateLegacy();
+  const index = await store.loadIndex();
+  if (index.failed) {
+    console.error(`[store] ${index.failed} paste record(s) failed to load`);
+  }
+  console.log(`[store] index loaded: ${index.loaded} paste(s)`);
   await backfillNames();
 }
 

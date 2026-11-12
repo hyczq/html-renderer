@@ -16,7 +16,7 @@
 - **安全默认**：预览页独立域名隔离（可配置）、CSP sandbox 兜底、SSRF 防护、按 IP 限流、scrypt 密码哈希、HMAC 签名 Cookie、原子写与串行化写锁。
 - **移动端友好**：响应式布局、刘海屏安全区域、触控尺寸与输入防缩放，文本响应 gzip 压缩省流量。
 - **完整体验**：深色模式、编辑链接、我的页面、搜索/筛选/分页与快捷键。
-- **可验证**：20 项测试覆盖核心流程、预览隔离与 Cookie 安全，CI 在 Node 18/20/22/24 上回归。
+- **可验证**：23 项测试覆盖核心流程、预览隔离、Cookie 安全、SSRF 边界、索引重建与 blob 回收，CI 在 Node 18/20/22/24 上回归。
 
 ## 功能
 
@@ -125,6 +125,9 @@ Nginx 同理，只要保留原始 `Host`（`proxy_set_header Host $host;`）即�
 | `MAX_PASTE_BYTES` | `2097152` | 单页最大字节数（2 MB） |
 | `TRUST_PROXY` | `1`（compose） | 是否信任 `X-Forwarded-For` / `CF-Connecting-IP` / `X-Forwarded-Host`；直接暴露公网时设为 `0` |
 | `FETCH_TIMEOUT_MS` | `12000` | 抓取远程 URL 的超时（毫秒） |
+| `URL_FETCH_ENABLED` | `1` | 是否允许从 URL 抓取；设为 `0` 可关闭该功能 |
+| `FETCH_ALLOWED_PORTS` | `80,443` | URL 抓取允许的端口白名单，逗号分隔 |
+| `BLOB_GC_GRACE_MS` | `600000` | 无引用 blob 的延迟回收时间（毫秒） |
 | `PREVIEW_ORIGIN` | 空 | 预览页独立 Origin，例如 `https://preview.example.com`；强烈建议设置 |
 | `PREVIEW_SANDBOX` | 未设置 `PREVIEW_ORIGIN` 时 `1` | 是否给预览页加 CSP sandbox（`1/0`）；独立域名下默认 `0` 以保持页面兼容；未配置 `PREVIEW_ORIGIN` 时禁止设为 `0` |
 
@@ -135,8 +138,8 @@ data/
   secret.key                 # 会话签名密钥（首次启动生成，勿删）
   users/u_<id>.json          # 用户（scrypt 哈希 + salt）
   index/users.json           # 用户名 → userId
-  index/user-pastes/<id>.json# 用户的历史记录索引
-  pastes/<code>.json         # 链接记录（code/editKey/hash/大小/时间，无正文）
+  index/user-pastes/<id>.json# 旧版用户索引；启动时忽略，可由 pastes/ 重建
+  pastes/<code>.json         # 链接记录（唯一事实来源：code/editKey/hash/大小/时间）
   blobs/<sha256>.html        # HTML 正文，按内容哈希去重
 ```
 
@@ -183,16 +186,17 @@ data/
 server.js                 # 进程入口：初始化 + 监听 + 优雅退出
 src/
   config.js               # 环境变量、数据目录、页面模板
-  http.js                 # 请求体读取、JSON/文本/HTML 响应
+  http.js                 # 请求体读取、JSON/文本/HTML 响应、异步 gzip
   rate-limit.js           # 进程内滑动窗口限流
-  store.js                # 文件存储、原子写、串行化写锁
+  store.js                # 文件存储、内存索引、blob 引用计数、原子写/写锁
   auth.js                 # scrypt 密码、签名 Cookie 会话
-  fetch-html.js           # 远程 URL 抓取与 SSRF 防护
+  fetch-html.js           # 远程 URL 抓取：DNS 固定、SSRF 防护、端口白名单
   handlers.js             # 业务处理器（生成/读取/保存/重命名/删除等）
-  app.js                  # 路由与 CSP
+  app.js                  # 路由、CSP、预览 ETag/304
   bootstrap.js            # 建目录、密钥、旧数据迁移
 public/                   # index / edit / login / my 页面与 avatar.svg
 test/api.test.js          # 端到端冒烟测试（node:test）
+scripts/doctor.js         # 数据自检：缺失 blob / hash 不一致 / 孤儿 blob
 Dockerfile
 docker-compose.yml
 deploy.sh                 # tar over ssh 部署脚本（需自行设置 HOST）
@@ -204,9 +208,11 @@ SECURITY.md
 
 ```bash
 npm test
+npm run doctor             # 数据自检（只读）
+npm run doctor -- --fix-orphans  # 索引加载无错误时清理孤儿 blob
 ```
 
-测试会启动真实 HTTP 服务并使用临时数据目录，覆盖：健康检查、gzip 压缩、匿名/登录生成、预览、读取、保存、去重、并发去重、注册登录、我的页面、重命名、删除、SSRF 拦截、旧数据迁移。CI 在 Node 18/20/22/24 上运行。
+测试会启动真实 HTTP 服务并使用临时数据目录，覆盖：健康检查、gzip 压缩、匿名/登录生成、预览、读取、保存、去重、并发去重、注册登录、我的页面、重命名、删除、SSRF 拦截、IPv6 私网边界、端口白名单、重启索引重建、blob 引用计数/回收、旧数据迁移。CI 在 Node 18/20/22/24 上运行。
 
 ## 部署脚本
 
@@ -229,7 +235,7 @@ HOST=root@your-server ./deploy.sh
 
 - 密码使用 `crypto.scrypt`（N=16384）加盐哈希，会话 Cookie 为 `HttpOnly; SameSite=Lax`，HTTPS 下自动加 `Secure` 并使用 `__Host-` 前缀（host-only，降低子域 Cookie 注入风险）。
 - 编辑密钥等同密码；匿名用户丢失后无法找回，登录用户可在「我的页面」查看。code 为 8 位、editKey 为 16 位，均由加密随机数生成。
-- URL 抓取做 SSRF 防护：禁止内网/回环/链路本地/元数据地址，逐跳校验重定向，最多 5 跳、12 秒超时、2 MB。
+- URL 抓取做 SSRF 防护：DNS 只解析一次并固定到已校验 IP（防 DNS 重绑定），拦截 IPv4/IPv6 私网、回环、链路本地、元数据、NAT64、6to4、Teredo 等地址；默认只允许 80/443 端口，逐跳复验重定向，最多 5 跳、12 秒超时、2 MB；可用 `URL_FETCH_ENABLED=0` 完全关闭。
 - 按 IP 限流：生成（登录 200 次/小时、匿名 60 次/小时）、保存 300 次/小时、登录注册 30 次/15 分钟。
 - 数据备份只需打包 `data/`，但请妥善保管 `secret.key`。
 

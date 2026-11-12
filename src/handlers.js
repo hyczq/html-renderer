@@ -6,8 +6,6 @@
  */
 
 const crypto = require('node:crypto');
-const fsp = require('node:fs/promises');
-const path = require('node:path');
 const config = require('./config');
 const { sendJson, sendBodyError, readJson } = require('./http');
 const { rateLimited } = require('./rate-limit');
@@ -83,26 +81,19 @@ async function handleMy(req, res, url, user) {
   if (!user) return sendJson(res, { success: false, error: '未登录', needLogin: true });
   const offset = Math.max(0, Number(url.searchParams.get('offset') || 0) || 0);
   const limit = Math.min(200, Math.max(1, Number(url.searchParams.get('limit') || 100) || 100));
-  const idx = await store.readUserPastes(user.id);
-  const items = [];
-  let totalBytes = 0;
-  for (const entry of idx) {
-    const p = await store.readPaste(entry.code);
-    if (!p || p.userId !== user.id) continue;
-    totalBytes += Number(p.size || 0);
-    items.push({
-      code: p.code,
-      editKey: p.editKey,
-      name: p.name || '',
-      createdAt: p.createdAt,
-      updatedAt: p.updatedAt,
-      size: Number(p.size || 0),
-      type: p.type || 'code',
-      sourceUrl: p.sourceUrl || null,
-      hash: p.hash,
-    });
-  }
+  const items = store.listUserPastes(user.id).map((p) => ({
+    code: p.code,
+    editKey: p.editKey,
+    name: p.name || '',
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
+    size: Number(p.size || 0),
+    type: p.type || 'code',
+    sourceUrl: p.sourceUrl || null,
+    hash: p.hash,
+  }));
   items.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  const totalBytes = items.reduce((sum, item) => sum + item.size, 0);
   return sendJson(res, {
     success: true,
     total: items.length,
@@ -125,53 +116,19 @@ async function handleDelete(req, res, user) {
   if (!paste) return sendJson(res, { success: false, error: '页面不存在或已过期' });
   if (paste.userId !== user.id) return sendJson(res, { success: false, error: '无权删除该页面' });
 
-  await store.withLock(async () => {
-    await fsp.rm(store.pasteFile(code), { force: true });
-    const idx = await store.readUserPastes(user.id);
-    await store.writeUserPastes(
-      user.id,
-      idx.filter((x) => x.code !== code)
-    );
-  });
-  await store.cleanupBlob(paste.hash);
+  await store.withLock(() => store.deletePasteLocked(code));
   return sendJson(res, { success: true });
-}
-
-async function findAnonPaste(anonId, hash) {
-  if (!anonId) return null;
-  const files = await fsp.readdir(config.PASTE_DIR).catch(() => []);
-  for (const f of files) {
-    if (!f.endsWith('.json')) continue;
-    try {
-      const p = JSON.parse(await fsp.readFile(path.join(config.PASTE_DIR, f), 'utf8'));
-      if (!p.userId && p.anonId === anonId && p.hash === hash) return p;
-    } catch {}
-  }
-  return null;
-}
-
-async function updateUserIndexName(paste, name) {
-  if (!paste.userId) return;
-  const idx = await store.readUserPastes(paste.userId);
-  const entry = idx.find((x) => x.code === paste.code);
-  if (!entry) return;
-  entry.name = name;
-  entry.updatedAt = paste.updatedAt;
-  await store.writeUserPastes(paste.userId, idx);
 }
 
 /** 调用方必须已持有 withLock，避免锁重入死锁。 */
 async function applyNameLocked(paste, name) {
-  if (!name || paste.name === name) return;
-  paste.name = name;
-  paste.updatedAt = new Date().toISOString();
-  await store.writeJsonAtomic(store.pasteFile(paste.code), paste);
-  await updateUserIndexName(paste, name);
+  if (!name || paste.name === name) return paste;
+  return store.renamePasteLocked(paste.code, name);
 }
 
 async function applyName(paste, name) {
-  if (!name || paste.name === name) return;
-  await store.withLock(() => applyNameLocked(paste, name));
+  if (!name || paste.name === name) return paste;
+  return store.withLock(() => store.renamePasteLocked(paste.code, name));
 }
 
 async function handleGenerate(req, res, user, anonId) {
@@ -192,6 +149,9 @@ async function handleGenerate(req, res, user, anonId) {
 
   let html;
   if (type === 'url') {
+    if (!config.URL_FETCH_ENABLED) {
+      return sendJson(res, { success: false, error: 'URL 抓取已关闭' });
+    }
     if (!body.url || typeof body.url !== 'string') {
       return sendJson(res, { success: false, error: '请提供 URL' });
     }
@@ -217,26 +177,20 @@ async function handleGenerate(req, res, user, anonId) {
   try {
     // SHA-256 去重：同一登录用户相同内容直接复用原链接
     if (user) {
-      const idx = await store.readUserPastes(user.id);
-      const hit = idx.find((x) => x.hash === hash);
-      if (hit) {
-        const existing = await store.readPaste(hit.code);
-        if (existing && existing.userId === user.id) {
-          if (explicitName) await applyName(existing, explicitName);
-          return sendJson(res, {
-            success: true,
-            code: existing.code,
-            editKey: existing.editKey,
-            name: existing.name || '',
-            reused: true,
-            createdAt: existing.createdAt,
-          });
-        }
+      let existing = store.findUserPasteByHash(user.id, hash);
+      if (existing) {
+        if (explicitName) existing = await applyName(existing, explicitName);
+        return sendJson(res, {
+          success: true,
+          code: existing.code,
+          editKey: existing.editKey,
+          name: existing.name || '',
+          reused: true,
+          createdAt: existing.createdAt,
+        });
       }
-    }
-
-    if (!user) {
-      const existingAnon = await findAnonPaste(anonId, hash);
+    } else {
+      const existingAnon = store.findAnonPaste(anonId, hash);
       if (existingAnon) {
         return sendJson(res, {
           success: true,
@@ -249,47 +203,32 @@ async function handleGenerate(req, res, user, anonId) {
       }
     }
 
-    await store.ensureBlob(hash, html);
-
     const created = await store.withLock(async () => {
       // 锁内二次检查，避免并发重复生成
       if (user) {
-        const idx2 = await store.readUserPastes(user.id);
-        const hit2 = idx2.find((x) => x.hash === hash);
-        if (hit2) {
-          const existing2 = await store.readPaste(hit2.code);
-          if (existing2 && existing2.userId === user.id) {
-            if (explicitName) await applyNameLocked(existing2, explicitName);
-            return { reused: existing2 };
-          }
+        let existing = store.findUserPasteByHash(user.id, hash);
+        if (existing) {
+          if (explicitName) existing = await applyNameLocked(existing, explicitName);
+          return { reused: existing };
         }
-      }
-      if (!user) {
-        const existingAnon2 = await findAnonPaste(anonId, hash);
-        if (existingAnon2) return { reused: existingAnon2 };
+      } else {
+        const existingAnon = store.findAnonPaste(anonId, hash);
+        if (existingAnon) return { reused: existingAnon };
       }
       const code = await store.uniqueCode();
       const editKey = store.newCode(16);
-      const now = new Date().toISOString();
-      const paste = {
+      const paste = await store.createPasteLocked({
         code,
         userId: user ? user.id : null,
-        anonId: user ? undefined : anonId,
+        anonId,
         name: derivedName,
         hash,
+        html,
         editKey,
         type,
         sourceUrl: type === 'url' ? String(body.url) : undefined,
         size,
-        createdAt: now,
-        updatedAt: now,
-      };
-      await store.writeJsonAtomic(store.pasteFile(code), paste);
-      if (user) {
-        const idx = await store.readUserPastes(user.id);
-        idx.unshift({ code, hash, size, type, name: derivedName, createdAt: now, updatedAt: now });
-        await store.writeUserPastes(user.id, idx);
-      }
+      });
       return { paste };
     });
 
@@ -324,11 +263,12 @@ async function handleGet(req, res, url) {
   const paste = await store.readPaste(code);
   if (!paste) return sendJson(res, { success: false, error: '页面不存在或已过期' });
   if (!keyEquals(key, paste.editKey)) return sendJson(res, { success: false, error: '密钥错误' });
-  return sendJson(res, {
-    success: true,
-    html: await store.pasteContent(paste),
-    name: paste.name || '',
-  });
+  const html = await store.pasteContent(paste);
+  if (html === null) {
+    console.error('[get] blob missing', code, paste.hash);
+    return sendJson(res, { success: false, error: '页面内容不可用，请从备份恢复' });
+  }
+  return sendJson(res, { success: true, html, name: paste.name || '' });
 }
 
 async function handleSave(req, res) {
@@ -354,33 +294,12 @@ async function handleSave(req, res) {
     return sendJson(res, { success: false, error: '内容过大，最大 2MB' });
   }
   const hash = store.sha256(html);
-  const oldHash = paste.hash;
+  const patch = { hash, size, html };
+  if (body.name !== undefined) patch.name = store.cleanName(body.name);
 
   try {
-    if (hash !== oldHash) await store.ensureBlob(hash, html);
-    paste.hash = hash;
-    paste.size = size;
-    if (body.name !== undefined) paste.name = store.cleanName(body.name);
-    paste.updatedAt = new Date().toISOString();
-    delete paste.html;
-
-    await store.withLock(async () => {
-      await store.writeJsonAtomic(store.pasteFile(code), paste);
-      if (paste.userId) {
-        const idx = await store.readUserPastes(paste.userId);
-        const entry = idx.find((x) => x.code === code);
-        if (entry) {
-          entry.hash = hash;
-          entry.size = size;
-          entry.name = paste.name || '';
-          entry.updatedAt = paste.updatedAt;
-          await store.writeUserPastes(paste.userId, idx);
-        }
-      }
-    });
-
-    if (oldHash && oldHash !== hash) await store.cleanupBlob(oldHash);
-    return sendJson(res, { success: true, name: paste.name || '' });
+    const updated = await store.withLock(() => store.updatePasteLocked(code, patch));
+    return sendJson(res, { success: true, name: updated.name || '' });
   } catch (e) {
     console.error('[save] failed', e);
     return sendJson(res, { success: false, error: '保存失败，请重试' });
@@ -408,13 +327,8 @@ async function handleRename(req, res, user) {
   if (!byOwner && !byKey) return sendJson(res, { success: false, error: '无权修改该页面' });
 
   const name = store.cleanName(body.name);
-  paste.name = name;
-  paste.updatedAt = new Date().toISOString();
   try {
-    await store.withLock(async () => {
-      await store.writeJsonAtomic(store.pasteFile(code), paste);
-      await updateUserIndexName(paste, name);
-    });
+    await store.withLock(() => store.renamePasteLocked(code, name));
     return sendJson(res, { success: true, name });
   } catch (e) {
     console.error('[rename] failed', e);

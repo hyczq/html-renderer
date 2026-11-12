@@ -18,6 +18,35 @@ const MAX_BODY = MAX_BYTES + 1024 * 1024;
 const TRUST_PROXY = process.env.TRUST_PROXY === '1';
 const FETCH_TIMEOUT_MS = Number(process.env.FETCH_TIMEOUT_MS || 12000);
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 天
+const URL_FETCH_ENABLED = process.env.URL_FETCH_ENABLED !== '0';
+
+if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) {
+  throw new Error('PORT 必须是 1-65535 的整数');
+}
+if (!Number.isInteger(MAX_BYTES) || MAX_BYTES < 1024) {
+  throw new Error('MAX_PASTE_BYTES 必须是大于等于 1024 的整数');
+}
+if (!Number.isFinite(FETCH_TIMEOUT_MS) || FETCH_TIMEOUT_MS < 100) {
+  throw new Error('FETCH_TIMEOUT_MS 必须大于等于 100');
+}
+
+/** 解析逗号分隔的端口白名单，启动时校验，避免配置错误导致 SSRF 收口失效。 */
+function parsePorts(raw) {
+  const ports = new Set();
+  for (const part of String(raw || '').split(',')) {
+    const value = part.trim();
+    if (!value) continue;
+    const port = Number(value);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      throw new Error('FETCH_ALLOWED_PORTS 必须是逗号分隔的 1-65535 端口');
+    }
+    ports.add(port);
+  }
+  if (!ports.size) throw new Error('FETCH_ALLOWED_PORTS 不能为空');
+  return ports;
+}
+
+const FETCH_ALLOWED_PORTS = parsePorts(process.env.FETCH_ALLOWED_PORTS || '80,443');
 
 /** 解析公开 Origin：只接受 http/https，且不能带路径、查询或片段。 */
 function parseOrigin(raw, name) {
@@ -91,6 +120,8 @@ module.exports = {
   MAX_BODY,
   TRUST_PROXY,
   FETCH_TIMEOUT_MS,
+  FETCH_ALLOWED_PORTS,
+  URL_FETCH_ENABLED,
   SESSION_TTL_MS,
   PREVIEW_ORIGIN,
   PREVIEW_HOST,

@@ -8,6 +8,7 @@ ENV NODE_ENV=production \
 COPY package.json server.js ./
 COPY src ./src
 COPY public ./public
+COPY scripts ./scripts
 
 RUN addgroup -g 10001 -S app \
  && adduser -S -u 10001 -G app app \

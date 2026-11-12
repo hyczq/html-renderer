@@ -23,32 +23,42 @@ function acceptsGzip(req) {
   return !q || Number(q[1]) > 0;
 }
 
-/** 统一写出响应体；文本类且超过阈值时按需 gzip，减少移动端流量。 */
+/** 统一写出响应体；文本类且超过阈值时按需 gzip（异步，避免阻塞事件循环）。 */
 function sendBody(res, body, status, headers) {
   const req = res.req;
-  let buf = Buffer.isBuffer(body) ? body : Buffer.from(String(body));
+  const buf = Buffer.isBuffer(body) ? body : Buffer.from(String(body));
   const out = { ...headers };
   const type = out['Content-Type'] || '';
-  if (
+
+  function write(payload) {
+    if (res.headersSent || res.writableEnded || res.destroyed) return;
+    out['Content-Length'] = payload.length;
+    try {
+      res.writeHead(status, out);
+      res.end(payload);
+    } catch {
+      try {
+        res.destroy();
+      } catch {}
+    }
+  }
+
+  const shouldCompress =
     req &&
     buf.length >= MIN_COMPRESS_BYTES &&
     COMPRESSIBLE_TYPE.test(type) &&
-    acceptsGzip(req)
-  ) {
-    try {
-      const gz = zlib.gzipSync(buf, { level: 6 });
-      if (gz.length < buf.length) {
-        buf = gz;
-        out['Content-Encoding'] = 'gzip';
-        out['Vary'] = out['Vary'] ? out['Vary'] + ', Accept-Encoding' : 'Accept-Encoding';
-      }
-    } catch {
-      // 压缩失败时回退为原始响应，不影响功能
+    acceptsGzip(req);
+
+  if (!shouldCompress) return write(buf);
+
+  zlib.gzip(buf, { level: 6 }, (err, gz) => {
+    if (!err && gz.length < buf.length) {
+      out['Content-Encoding'] = 'gzip';
+      out['Vary'] = out['Vary'] ? out['Vary'] + ', Accept-Encoding' : 'Accept-Encoding';
+      return write(gz);
     }
-  }
-  out['Content-Length'] = buf.length;
-  res.writeHead(status, out);
-  res.end(buf);
+    write(buf);
+  });
 }
 
 function sendJson(res, obj, status = 200, extra = {}) {

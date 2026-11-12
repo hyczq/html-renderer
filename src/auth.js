@@ -36,14 +36,21 @@ function scryptHash(password, salt) {
 }
 
 async function createUser(rawUsername, password) {
+  const username = String(rawUsername || '').trim();
+  const lower = username.toLowerCase();
+
+  // 先做一次无锁快速检查；真正的一致性检查在锁内重做。
+  const existing = await store.readUsersIndex();
+  if (existing[lower]) throw new Error('用户名已存在');
+
+  // scrypt 是 CPU/内存密集操作，放在全局写锁外，避免注册阻塞生成/保存。
+  const salt = crypto.randomBytes(16).toString('hex');
+  const passHash = await scryptHash(password, salt);
+  const id = 'u_' + crypto.randomBytes(8).toString('hex');
+
   return store.withLock(async () => {
-    const username = String(rawUsername || '').trim();
-    const lower = username.toLowerCase();
     const map = await store.readUsersIndex();
     if (map[lower]) throw new Error('用户名已存在');
-    const id = 'u_' + crypto.randomBytes(8).toString('hex');
-    const salt = crypto.randomBytes(16).toString('hex');
-    const passHash = await scryptHash(password, salt);
     const user = {
       id,
       username,
