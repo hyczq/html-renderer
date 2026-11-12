@@ -5,36 +5,98 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0b0b0e" media="(prefers-color-scheme: dark)">
-<title>账号安全 - {{BRAND}}</title>
+<title>账号与安全 - {{BRAND}}</title>
 <link rel="stylesheet" href="/theme.css">
 <script src="/theme.js"></script>
 <style>
-.settings-hero{display:flex;align-items:center;gap:16px;margin-bottom:16px}
-.settings-hero .icon{display:flex;align-items:center;justify-content:center;width:54px;height:54px;flex:none;border:1px solid var(--info-bd);border-radius:50%;background:var(--info-bg);font-size:26px}
-.settings-hero h1{font-size:22px;letter-spacing:-.4px;line-height:1.3}
-.settings-hero p{margin-top:3px;color:var(--txt3);font-size:12px;line-height:1.6}
-.settings-stack{display:flex;flex-direction:column;gap:14px}
-.section-title{font-size:18px;letter-spacing:-.25px;line-height:1.35}
-.section-desc{margin-top:5px;color:var(--txt3);font-size:13px;line-height:1.65}
-.section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;margin-top:16px}
-.form-grid .field:first-child{grid-column:1/-1}
-.form-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px}
-.form-msg{min-height:18px;margin-top:9px}
-.code-list{display:none;margin-top:12px;padding:14px 16px;border:1px solid var(--bd);border-radius:var(--r-md);background:var(--in);color:var(--txt);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:14px;line-height:1.9;white-space:pre-wrap;word-break:break-all}
-.code-list.show{display:block}
-.copy-row{display:none;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
-.copy-row.show{display:flex}
-.danger-zone{border-color:var(--err-bd);box-shadow:0 18px 44px rgba(215,0,21,.06)}
-.danger-zone .section-title{color:var(--danger-text)}
-@media(max-width:600px){
-  .settings-hero{align-items:flex-start;padding:20px}
-  .settings-hero .icon{width:46px;height:46px;font-size:22px}
-  .settings-hero h1{font-size:19px}
-  .form-grid{grid-template-columns:1fr}
-  .form-grid .field:first-child{grid-column:auto}
-  .section-head{flex-direction:column;gap:8px}
+/* 账号安全页：概览 + 侧边导航 + 单面板，避免把全部表单堆在一屏 */
+.security-hero{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:24px 26px;margin-bottom:16px;background:linear-gradient(135deg,var(--card),var(--cardh))}
+.security-avatar{display:flex;align-items:center;justify-content:center;width:56px;height:56px;flex:none;border:1px solid var(--info-bd);border-radius:50%;background:var(--info-bg);font-size:27px;box-shadow:var(--sh-sm)}
+.security-identity{flex:1;min-width:160px}
+.security-kicker{color:var(--txt3);font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}
+.security-identity h1{margin-top:3px;font-size:22px;letter-spacing:-.4px;line-height:1.25;word-break:break-word}
+.security-identity p{margin-top:4px;color:var(--txt3);font-size:12px;line-height:1.6}
+.security-status{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.status-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--bd);border-radius:var(--r-pill);background:var(--tab);color:var(--txt2);font-size:11px;font-weight:600;white-space:nowrap}
+.status-pill.good{border-color:var(--ok-bd);background:var(--ok-bg);color:var(--ok-text)}
+.status-pill.warn{border-color:var(--warn-bd);background:var(--warn-bg);color:var(--warn-text)}
+.security-layout{display:grid;grid-template-columns:232px minmax(0,1fr);gap:16px;align-items:start}
+.security-nav{display:flex;flex-direction:column;gap:4px;padding:9px;position:sticky;top:20px}
+.nav-item{display:flex;align-items:center;gap:11px;width:100%;padding:11px 12px;border:1px solid transparent;border-radius:var(--r-md);background:transparent;color:var(--txt2);text-align:left;cursor:pointer;transition:background .2s var(--ease),border-color .2s var(--ease),color .2s var(--ease)}
+.nav-item:hover{background:var(--tab)}
+.nav-item.active{border-color:var(--bd);background:var(--cardh);color:var(--txt);box-shadow:var(--sh-sm)}
+.nav-item.danger{color:var(--danger-text)}
+.nav-item.danger:hover{background:var(--err-bg)}
+.nav-icon{display:flex;align-items:center;justify-content:center;width:34px;height:34px;flex:none;border-radius:11px;background:var(--tab);font-size:16px}
+.nav-item.active .nav-icon{background:var(--info-bg)}
+.nav-item.danger.active .nav-icon{background:var(--err-bg)}
+.nav-text{display:flex;flex-direction:column;min-width:0}
+.nav-text strong{font-size:13px;font-weight:700;line-height:1.3}
+.nav-text small{margin-top:2px;color:var(--txt3);font-size:10.5px;line-height:1.35}
+.security-content{min-width:0}
+.security-panel{display:none;padding:26px 28px}
+.security-panel.active{display:block;animation:panelIn .22s var(--ease)}
+@keyframes panelIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding-bottom:16px;margin-bottom:18px;border-bottom:1px solid var(--bd)}
+.panel-head h2{font-size:19px;letter-spacing:-.3px;line-height:1.3}
+.panel-head p{margin-top:5px;color:var(--txt3);font-size:12.5px;line-height:1.65}
+.panel-head .badge{flex:none;margin-top:2px}
+.form-row{margin-bottom:16px}
+.form-row.two{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.pw-wrap{position:relative}
+.pw-wrap .input{padding-right:48px}
+.eye-btn{position:absolute;top:50%;right:4px;display:flex;align-items:center;justify-content:center;width:38px;height:38px;padding:0;border:none;border-radius:50%;background:transparent;color:var(--txt3);font-size:16px;line-height:1;cursor:pointer;transform:translateY(-50%)}
+.eye-btn:hover{background:var(--tab)}
+.strength{margin-top:8px}
+.strength-bar{height:4px;overflow:hidden;border-radius:var(--r-pill);background:var(--tab)}
+.strength-bar span{display:block;width:0;height:100%;border-radius:inherit;background:var(--danger);transition:width .2s var(--ease),background .2s var(--ease)}
+.strength-text{margin-top:5px;color:var(--txt3);font-size:11px;line-height:1.4}
+.form-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:6px}
+.form-msg{min-height:18px;margin-top:10px;text-align:right}
+.panel-note{margin-top:18px}
+.recovery-status{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 16px;border:1px solid var(--bd);border-radius:var(--r-md);background:var(--in)}
+.recovery-status-text{display:flex;flex-direction:column;gap:3px}
+.recovery-status-text strong{font-size:13px}
+.recovery-status-text span{color:var(--txt3);font-size:11.5px}
+.codes-output{margin-top:16px;padding:16px;border:1px solid var(--warn-bd);border-radius:var(--r-md);background:var(--warn-bg)}
+.codes-output pre{margin-top:10px;padding:12px 14px;border:1px solid var(--bd);border-radius:var(--r-sm);background:var(--bg2);color:var(--txt);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13.5px;line-height:1.85;white-space:pre-wrap;word-break:break-all}
+.code-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
+.session-card{display:flex;align-items:center;gap:13px;padding:15px 16px;border:1px solid var(--bd);border-radius:var(--r-md);background:var(--in)}
+.session-dot{width:9px;height:9px;flex:none;border-radius:50%;background:var(--ok);box-shadow:0 0 0 4px var(--ok-bg)}
+.session-info{flex:1;min-width:0}
+.session-info strong{display:block;font-size:13.5px}
+.session-info span{display:block;margin-top:3px;color:var(--txt3);font-size:11.5px;line-height:1.5}
+.danger-zone{border-color:var(--err-bd);background:linear-gradient(180deg,var(--card),var(--err-bg))}
+.danger-zone .panel-head{border-bottom-color:var(--err-bd)}
+.danger-zone .panel-head h2{color:var(--danger-text)}
+.danger-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px}
+.del-form{margin-top:16px;padding-top:16px;border-top:1px dashed var(--err-bd)}
+.del-form[hidden]{display:none}
+@media(max-width:760px){
+  .security-layout{grid-template-columns:1fr}
+  .security-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));position:static;padding:7px;gap:6px}
+  .nav-item{padding:10px;gap:8px}
+  .nav-icon{width:30px;height:30px;font-size:14px}
+  .nav-text strong{font-size:12px}
+  .nav-text small{display:none}
+  .security-panel{padding:22px 18px}
+  .panel-head{flex-direction:column;gap:8px}
+  .panel-head .badge{margin-top:0}
+  .form-row.two{grid-template-columns:1fr}
+  .form-msg{text-align:left}
+  .form-actions{justify-content:stretch}
+  .form-actions .btn{flex:1 1 100%}
 }
+@media(max-width:430px){
+  .security-hero{align-items:flex-start;padding:20px}
+  .security-avatar{width:46px;height:46px;font-size:22px}
+  .security-identity h1{font-size:19px}
+  .security-status{width:100%}
+  .status-pill{flex:1 1 auto;justify-content:center}
+  .security-nav{grid-template-columns:1fr 1fr}
+  .nav-item{flex-direction:column;align-items:flex-start;gap:5px;padding:9px}
+}
+@media(prefers-reduced-motion:reduce){.security-panel.active{animation:none}.strength-bar span{transition:none}}
 </style>
 </head>
 <body>
@@ -44,7 +106,7 @@
       <img class="brand-avatar" src="/avatar.svg" alt="">
       <span class="brand-text">
         <span class="brand-name">{{BRAND}}</span>
-        <span class="brand-sub">账号安全</span>
+        <span class="brand-sub">账号与安全</span>
       </span>
     </a>
     <div class="topbar-actions">
@@ -53,60 +115,111 @@
     </div>
   </header>
 
-  <main class="settings-stack">
-    <section class="card settings-hero">
-      <div class="icon" aria-hidden="true">🛡️</div>
-      <div>
-        <h1>账号安全</h1>
-        <p>管理密码、恢复码与登录会话。当前账号：<strong id="who">加载中...</strong></p>
-      </div>
-    </section>
+  <section class="card security-hero">
+    <div class="security-avatar" aria-hidden="true">🛡️</div>
+    <div class="security-identity">
+      <div class="security-kicker">账号安全</div>
+      <h1 id="who">加载中...</h1>
+      <p>管理密码、恢复码与登录状态</p>
+    </div>
+    <div class="security-status">
+      <span class="status-pill good" id="sessionPill">🔐 会话保护</span>
+      <span class="status-pill warn" id="rcPill">🗝️ 恢复码 0 个</span>
+    </div>
+  </section>
 
-    <section class="card">
-      <h2 class="section-title">修改密码</h2>
-      <p class="section-desc">修改后所有旧会话会立即失效，当前设备会自动保持登录；已有恢复码也会失效，请重新生成。</p>
-      <div class="form-grid">
-        <div class="field"><label for="oldPw">当前密码</label><input class="input" id="oldPw" type="password" autocomplete="current-password" placeholder="请输入当前密码"></div>
-        <div class="field"><label for="newPw">新密码</label><input class="input" id="newPw" type="password" autocomplete="new-password" placeholder="至少 6 位"></div>
-        <div class="field"><label for="newPw2">确认新密码</label><input class="input" id="newPw2" type="password" autocomplete="new-password" placeholder="再次输入新密码"></div>
-      </div>
-      <div class="form-actions"><button class="btn btn-primary" id="pwBtn" type="button">更新密码</button></div>
-      <p class="hint form-msg" id="pwMsg" role="status"></p>
-    </section>
+  <div class="security-layout">
+    <nav class="card security-nav" role="tablist" aria-label="账号安全设置">
+      <button class="nav-item active" type="button" role="tab" aria-selected="true" id="tab-password" aria-controls="panel-password" data-panel="password">
+        <span class="nav-icon" aria-hidden="true">🔑</span>
+        <span class="nav-text"><strong>修改密码</strong><small>轮换登录密码</small></span>
+      </button>
+      <button class="nav-item" type="button" role="tab" aria-selected="false" id="tab-recovery" aria-controls="panel-recovery" data-panel="recovery">
+        <span class="nav-icon" aria-hidden="true">🗝️</span>
+        <span class="nav-text"><strong>恢复码</strong><small>找回账号的备用钥匙</small></span>
+      </button>
+      <button class="nav-item" type="button" role="tab" aria-selected="false" id="tab-sessions" aria-controls="panel-sessions" data-panel="sessions">
+        <span class="nav-icon" aria-hidden="true">📱</span>
+        <span class="nav-text"><strong>登录会话</strong><small>退出所有设备</small></span>
+      </button>
+      <button class="nav-item danger" type="button" role="tab" aria-selected="false" id="tab-danger" aria-controls="panel-danger" data-panel="danger">
+        <span class="nav-icon" aria-hidden="true">⚠️</span>
+        <span class="nav-text"><strong>危险操作</strong><small>永久注销账号</small></span>
+      </button>
+    </nav>
 
-    <section class="card">
-      <div class="section-head">
-        <div>
-          <h2 class="section-title">恢复码</h2>
-          <p class="section-desc">忘记密码时，用其中一个恢复码重置密码。生成新的恢复码会使旧恢复码全部失效。</p>
+    <div class="security-content">
+      <section class="card security-panel active" id="panel-password" role="tabpanel" aria-labelledby="tab-password">
+        <div class="panel-head">
+          <div><h2>修改密码</h2><p>修改后其他设备会立即退出登录，当前设备保持在线。</p></div>
+          <span class="badge">推荐定期更换</span>
         </div>
-        <span class="badge" id="rcCount">未生成</span>
-      </div>
-      <div class="field" style="margin-top:16px"><label for="rcPw">当前密码（确认身份）</label><input class="input" id="rcPw" type="password" autocomplete="current-password" placeholder="请输入当前密码"></div>
-      <div class="form-actions"><button class="btn btn-ghost" id="rcBtn" type="button">生成新的恢复码</button></div>
-      <pre class="code-list" id="rcList" aria-label="恢复码列表"></pre>
-      <div class="copy-row" id="rcCopyRow"><button class="btn btn-ghost btn-sm" id="rcCopy" type="button">复制全部恢复码</button><span class="hint">只显示这一次，请妥善保存。</span></div>
-      <p class="hint form-msg" id="rcMsg" role="status"></p>
-    </section>
+        <div class="form-row">
+          <label class="field" style="margin:0"><span style="display:block;margin-bottom:8px;color:var(--txt2);font-size:13px;font-weight:600">当前密码</span><div class="pw-wrap"><input class="input" id="oldPw" type="password" autocomplete="current-password" placeholder="请输入当前密码"><button class="eye-btn" type="button" data-for="oldPw" aria-label="显示密码">👁️</button></div></label>
+        </div>
+        <div class="form-row two">
+          <label class="field" style="margin:0"><span style="display:block;margin-bottom:8px;color:var(--txt2);font-size:13px;font-weight:600">新密码</span><div class="pw-wrap"><input class="input" id="newPw" type="password" autocomplete="new-password" placeholder="至少 6 位"><button class="eye-btn" type="button" data-for="newPw" aria-label="显示密码">👁️</button></div></label>
+          <label class="field" style="margin:0"><span style="display:block;margin-bottom:8px;color:var(--txt2);font-size:13px;font-weight:600">确认新密码</span><div class="pw-wrap"><input class="input" id="newPw2" type="password" autocomplete="new-password" placeholder="再次输入新密码"><button class="eye-btn" type="button" data-for="newPw2" aria-label="显示密码">👁️</button></div></label>
+        </div>
+        <div class="strength"><div class="strength-bar"><span id="strengthBar"></span></div><div class="strength-text" id="strengthText">建议使用 8 位以上，包含字母、数字或符号</div></div>
+        <div class="form-actions"><button class="btn btn-primary" id="pwBtn" type="button">更新密码</button></div>
+        <p class="hint form-msg" id="pwMsg" role="status"></p>
+        <div class="notice warn panel-note">修改密码会使已有恢复码失效，请到「恢复码」页重新生成。</div>
+      </section>
 
-    <section class="card">
-      <h2 class="section-title">登录会话</h2>
-      <p class="section-desc">如果怀疑密码或 Cookie 泄露，退出所有设备会立即吊销全部现有会话，包括当前设备。</p>
-      <div class="form-actions" style="margin-top:16px"><button class="btn btn-danger" id="logoutAllBtn" type="button">退出所有设备</button></div>
-      <p class="hint form-msg" id="sessionMsg" role="status"></p>
-    </section>
+      <section class="card security-panel" id="panel-recovery" role="tabpanel" aria-labelledby="tab-recovery" hidden>
+        <div class="panel-head">
+          <div><h2>恢复码</h2><p>忘记密码时，用其中一个恢复码重置密码。</p></div>
+          <span class="badge" id="rcCount">未生成</span>
+        </div>
+        <div class="recovery-status">
+          <div class="recovery-status-text"><strong id="rcStateTitle">尚未生成恢复码</strong><span>生成后只显示一次，请保存在离线位置。</span></div>
+        </div>
+        <div class="form-row" style="margin-top:16px">
+          <label class="field" style="margin:0"><span style="display:block;margin-bottom:8px;color:var(--txt2);font-size:13px;font-weight:600">当前密码（确认身份）</span><div class="pw-wrap"><input class="input" id="rcPw" type="password" autocomplete="current-password" placeholder="输入当前密码后生成"><button class="eye-btn" type="button" data-for="rcPw" aria-label="显示密码">👁️</button></div></label>
+        </div>
+        <div class="form-actions" style="justify-content:flex-start"><button class="btn btn-ghost" id="rcBtn" type="button">生成新的恢复码</button></div>
+        <div class="codes-output" id="rcOutput" hidden>
+          <strong>请立即保存这些恢复码</strong>
+          <pre id="rcList" aria-label="恢复码列表"></pre>
+          <div class="code-actions"><button class="btn btn-ghost btn-sm" id="rcCopy" type="button">复制全部</button><button class="btn btn-ghost btn-sm" id="rcDownload" type="button">下载 .txt</button><span class="hint">关闭后将无法再次查看</span></div>
+        </div>
+        <p class="hint form-msg" id="rcMsg" role="status"></p>
+      </section>
 
-    <section class="card danger-zone">
-      <h2 class="section-title">注销账号</h2>
-      <p class="section-desc">永久删除账号和你的全部页面。共享正文只有在没有其他页面引用时才会回收，此操作不可恢复。</p>
-      <div class="form-grid">
-        <div class="field"><label for="delPw">当前密码</label><input class="input" id="delPw" type="password" autocomplete="current-password" placeholder="请输入当前密码"></div>
-        <div class="field"><label for="delName">输入用户名确认</label><input class="input" id="delName" autocomplete="off" spellcheck="false" placeholder="请输入完整用户名"></div>
-      </div>
-      <div class="form-actions"><button class="btn btn-danger-solid" id="delBtn" type="button">永久注销账号</button></div>
-      <p class="hint form-msg" id="delMsg" role="status"></p>
-    </section>
-  </main>
+      <section class="card security-panel" id="panel-sessions" role="tabpanel" aria-labelledby="tab-sessions" hidden>
+        <div class="panel-head">
+          <div><h2>登录会话</h2><p>查看当前登录状态，或在怀疑泄露时一次性退出所有设备。</p></div>
+          <span class="badge">30 天有效</span>
+        </div>
+        <div class="session-card">
+          <span class="session-dot" aria-hidden="true"></span>
+          <div class="session-info"><strong>当前设备</strong><span>已通过安全 Cookie 登录 · 会话将在 30 天后自动过期</span></div>
+          <span class="badge">在线</span>
+        </div>
+        <div class="notice warn panel-note">「退出所有设备」会立即吊销全部现有会话，包括当前设备。执行后需要重新登录。</div>
+        <div class="form-actions" style="justify-content:flex-start;margin-top:16px"><button class="btn btn-danger" id="logoutAllBtn" type="button">退出所有设备</button></div>
+        <p class="hint form-msg" id="sessionMsg" role="status"></p>
+      </section>
+
+      <section class="card security-panel danger-zone" id="panel-danger" role="tabpanel" aria-labelledby="tab-danger" hidden>
+        <div class="panel-head">
+          <div><h2>注销账号</h2><p>永久删除账号和你的全部页面，此操作不可恢复。</p></div>
+          <span class="badge">不可恢复</span>
+        </div>
+        <div class="notice error">共享正文只有在没有其他页面引用时才会回收；你的公开链接会立即失效。</div>
+        <div class="danger-actions"><button class="btn btn-danger" id="delToggle" type="button" aria-expanded="false" aria-controls="delForm">我已了解风险，显示注销表单</button></div>
+        <div class="del-form" id="delForm" hidden>
+          <div class="form-row two">
+            <label class="field" style="margin:0"><span style="display:block;margin-bottom:8px;color:var(--txt2);font-size:13px;font-weight:600">当前密码</span><div class="pw-wrap"><input class="input" id="delPw" type="password" autocomplete="current-password" placeholder="请输入当前密码"><button class="eye-btn" type="button" data-for="delPw" aria-label="显示密码">👁️</button></div></label>
+            <label class="field" style="margin:0"><span style="display:block;margin-bottom:8px;color:var(--txt2);font-size:13px;font-weight:600">输入用户名确认</span><input class="input" id="delName" autocomplete="off" spellcheck="false" placeholder="请输入完整用户名"></label>
+          </div>
+          <div class="form-actions"><button class="btn btn-danger-solid" id="delBtn" type="button">永久注销账号</button></div>
+          <p class="hint form-msg" id="delMsg" role="status"></p>
+        </div>
+      </section>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -115,11 +228,11 @@
 function $(id){return document.getElementById(id)}
 function toast(msg,tone){
   var t=$("toast");t.textContent=msg;t.className="toast show"+(tone?" "+tone:"");
-  setTimeout(function(){t.className="toast"+(tone?" "+tone:"")},2400);
+  setTimeout(function(){t.className="toast"+(tone?" "+tone:"")},2400)
 }
 function msg(el,text,ok){el.textContent=text;el.className="hint form-msg "+(ok?"ok":"et")}
 function post(url,data){
-  return fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)}).then(function(r){return r.json()});
+  return fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)}).then(function(r){return r.json()})
 }
 function copyText(text){
   if(navigator.clipboard&&navigator.clipboard.writeText)return navigator.clipboard.writeText(text);
@@ -127,10 +240,59 @@ function copyText(text){
   document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);
   return Promise.resolve();
 }
+function setRecoveryCount(count){
+  var n=Number(count)||0;
+  $("rcCount").textContent=n?("已生成 "+n+" 个"):"未生成";
+  $("rcPill").textContent=n?("🗝️ 恢复码 "+n+" 个"):"🗝️ 恢复码 0 个";
+  $("rcPill").className="status-pill "+(n?"good":"warn");
+  $("rcStateTitle").textContent=n?("已有 "+n+" 个未使用恢复码"):"尚未生成恢复码";
+}
+var tabs=Array.prototype.slice.call(document.querySelectorAll(".nav-item"));
+var panels=Array.prototype.slice.call(document.querySelectorAll(".security-panel"));
+var validPanels={password:1,recovery:1,sessions:1,danger:1};
+function activatePanel(name,updateHash){
+  if(!validPanels[name])name="password";
+  tabs.forEach(function(t){var on=t.getAttribute("data-panel")===name;t.classList.toggle("active",on);t.setAttribute("aria-selected",on?"true":"false")});
+  panels.forEach(function(p){var on=p.id==="panel-"+name;p.classList.toggle("active",on);p.hidden=!on});
+  if(updateHash&&history.replaceState)history.replaceState(null,"","#"+name);
+}
+tabs.forEach(function(t){t.addEventListener("click",function(){activatePanel(t.getAttribute("data-panel"),true)})});
+document.querySelector(".security-nav").addEventListener("keydown",function(e){
+  var i=tabs.indexOf(document.activeElement);if(i<0)return;
+  var next=null;
+  if(e.key==="ArrowDown"||e.key==="ArrowRight")next=tabs[(i+1)%tabs.length];
+  if(e.key==="ArrowUp"||e.key==="ArrowLeft")next=tabs[(i-1+tabs.length)%tabs.length];
+  if(next){e.preventDefault();next.focus();activatePanel(next.getAttribute("data-panel"),true)}
+});
+window.addEventListener("hashchange",function(){activatePanel(location.hash.slice(1),false)});
+activatePanel(location.hash.slice(1)||"password",false);
+
+document.querySelectorAll(".eye-btn").forEach(function(b){
+  b.addEventListener("click",function(){
+    var el=$(b.getAttribute("data-for"));if(!el)return;
+    var show=el.type==="password";el.type=show?"text":"password";
+    b.textContent=show?"🙈":"👁️";b.setAttribute("aria-label",show?"隐藏密码":"显示密码");
+  });
+});
+
+function updateStrength(){
+  var v=$("newPw").value,score=0;
+  if(v.length>=6)score++;
+  if(v.length>=10)score++;
+  if(/[A-Za-z]/.test(v)&&/\d/.test(v))score++;
+  if(/[^A-Za-z0-9]/.test(v))score++;
+  var pct=[0,25,50,75,100][score];
+  var color=score<=1?"var(--danger)":score===2?"var(--warn)":"var(--ok)";
+  var text=["建议使用 8 位以上，包含字母、数字或符号","密码偏短，安全性较弱","可以再增加长度或符号","强度不错，建议再混合符号","密码强度很好"][score];
+  $("strengthBar").style.width=pct+"%";$("strengthBar").style.background=color;
+  $("strengthText").textContent=text;
+}
+$("newPw").addEventListener("input",updateStrength);
+
 fetch("/api/me").then(function(r){return r.json()}).then(function(d){
   if(!d.success){location.href="/login";return}
   $("who").textContent=d.user.username;
-  if(d.user.recoveryCodeCount)$("rcCount").textContent="已生成 "+d.user.recoveryCodeCount+" 个";
+  setRecoveryCount(d.user.recoveryCodeCount);
 }).catch(function(){location.href="/login"});
 
 $("pwBtn").addEventListener("click",async function(){
@@ -141,8 +303,11 @@ $("pwBtn").addEventListener("click",async function(){
   var btn=this;btn.disabled=true;var old=btn.textContent;btn.textContent="更新中...";
   try{
     var d=await post("/api/password",{oldPassword:oldPw,newPassword:newPw});
-    if(d.success){msg($("pwMsg"),"密码已更新，旧会话和恢复码已失效",true);$("oldPw").value="";$("newPw").value="";$("newPw2").value="";$("rcCount").textContent="未生成";$("rcList").classList.remove("show");$("rcCopyRow").classList.remove("show");toast("密码已更新","success")}
-    else msg($("pwMsg"),d.error||"修改失败",false);
+    if(d.success){
+      msg($("pwMsg"),"密码已更新，旧会话和恢复码已失效",true);
+      $("oldPw").value="";$("newPw").value="";$("newPw2").value="";updateStrength();
+      setRecoveryCount(0);$("rcOutput").hidden=true;toast("密码已更新","success");
+    }else msg($("pwMsg"),d.error||"修改失败",false);
   }catch(e){msg($("pwMsg"),"网络错误，请重试",false)}
   finally{btn.disabled=false;btn.textContent=old}
 });
@@ -154,9 +319,9 @@ $("rcBtn").addEventListener("click",async function(){
   try{
     var d=await post("/api/recovery-codes",{password:pw});
     if(d.success){
-      $("rcList").textContent=d.codes.join("\n");$("rcList").classList.add("show");
-      $("rcCopyRow").classList.add("show");$("rcCount").textContent="已生成 "+d.codes.length+" 个";
-      msg($("rcMsg"),"恢复码已生成，请立即保存",true);$("rcPw").value="";
+      $("rcList").textContent=d.codes.join("\n");$("rcOutput").hidden=false;
+      setRecoveryCount(d.codes.length);$("rcPw").value="";
+      msg($("rcMsg"),"恢复码已生成，请立即保存",true);
     }else msg($("rcMsg"),d.error||"生成失败",false);
   }catch(e){msg($("rcMsg"),"网络错误，请重试",false)}
   finally{btn.disabled=false;btn.textContent=old}
@@ -164,6 +329,11 @@ $("rcBtn").addEventListener("click",async function(){
 
 $("rcCopy").addEventListener("click",function(){
   copyText($("rcList").textContent).then(function(){toast("已复制恢复码","success")}).catch(function(){toast("复制失败，请手动选择","error")});
+});
+$("rcDownload").addEventListener("click",function(){
+  var blob=new Blob(["恢复码（每个只能使用一次）\n\n"+$("rcList").textContent+"\n"],{type:"text/plain;charset=utf-8"});
+  var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="recovery-codes.txt";
+  document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(a.href)},1000);
 });
 
 $("logoutAllBtn").addEventListener("click",async function(){
@@ -177,6 +347,12 @@ $("logoutAllBtn").addEventListener("click",async function(){
   finally{btn.disabled=false;btn.textContent=old}
 });
 
+$("delToggle").addEventListener("click",function(){
+  var form=$("delForm"),open=form.hidden;
+  form.hidden=!open;this.setAttribute("aria-expanded",open?"true":"false");
+  this.textContent=open?"收起注销表单":"我已了解风险，显示注销表单";
+  if(open)$("delPw").focus();
+});
 $("delBtn").addEventListener("click",async function(){
   var pw=$("delPw").value,name=$("delName").value.trim();
   if(!pw||!name){msg($("delMsg"),"请输入密码和用户名",false);return}
