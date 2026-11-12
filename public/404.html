@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0b0e" media="(prefers-color-scheme: dark)">
+<meta name="preview-origin" content="{{PREVIEW_ORIGIN}}">
+<meta name="robots" content="noindex,nofollow">
+<title>页面不存在 - {{BRAND}}</title>
+<link rel="stylesheet" href="/theme.css">
+<script src="/theme.js"></script>
+<style>
+/* 404：沿用全站页面骨架、品牌栏与卡片样式 */
+.error-shell{display:flex;align-items:center;justify-content:center;min-height:calc(100dvh - 120px);padding:8px 0 28px}
+.error-card{width:100%;max-width:600px;padding:46px 36px 38px;text-align:center}
+.error-code{font-size:clamp(64px,14vw,96px);font-weight:800;letter-spacing:-5px;line-height:1;background:var(--gr);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;user-select:none}
+.error-pill{display:inline-flex;align-items:center;gap:6px;margin-top:14px;padding:4px 12px;border:1px solid var(--info-bd);border-radius:var(--r-pill);background:var(--info-bg);color:var(--ac-text);font-size:12px;font-weight:600}
+.error-title{margin-top:18px;font-size:23px;font-weight:700;letter-spacing:-.4px;line-height:1.35}
+.error-desc{max-width:420px;margin:10px auto 0;color:var(--txt2);font-size:14px;line-height:1.8}
+.error-actions{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:24px}
+.error-actions .btn{min-width:148px;min-height:46px}
+.error-tips{max-width:440px;margin:26px auto 0;padding-top:18px;border-top:1px solid var(--bd);color:var(--txt3);font-size:12px;line-height:1.75}
+.error-tips strong{color:var(--txt2);font-weight:600}
+#previewHint{display:none;margin-top:14px;padding:9px 12px;border:1px solid var(--warn-bd);border-radius:var(--r-sm);background:var(--warn-bg);color:var(--warn-text);font-size:12px;line-height:1.5}
+#previewHint.show{display:block}
+@media(max-width:600px){
+  .error-shell{min-height:calc(100dvh - 96px);padding:0 0 18px}
+  .error-card{padding:34px 20px 28px}
+  .error-code{font-size:68px;letter-spacing:-4px}
+  .error-title{font-size:19px}
+  .error-desc{font-size:13px}
+  .error-actions{gap:8px;margin-top:20px}
+  .error-actions .btn{flex:1 1 100%;min-width:0}
+  .error-tips{margin-top:22px}
+}
+</style>
+<link rel="icon" href="/avatar.svg">
+</head>
+<body>
+<div class="page">
+  <header class="topbar">
+    <a class="brand" href="/" id="brandLink" aria-label="{{BRAND}} 首页">
+      <img class="brand-avatar" src="/avatar.svg" alt="">
+      <span class="brand-text">
+        <span class="brand-name">{{BRAND}}</span>
+        <span class="brand-sub">永久链接 · 自动去重 · 历史记录</span>
+      </span>
+    </a>
+    <div class="topbar-actions">
+      <button class="icon-btn" id="tt" type="button" aria-label="切换深色模式"><span id="ti">🌙</span></button>
+    </div>
+  </header>
+
+  <main class="error-shell">
+    <section class="card error-card">
+      <div class="error-code" aria-hidden="true">404</div>
+      <div class="error-pill">🔗 链接失效</div>
+      <h1 class="error-title">页面不存在或已过期</h1>
+      <p class="error-desc">你访问的永久链接可能输入有误，或者页面已经被删除。永久链接删除后无法恢复。</p>
+      <div class="error-actions">
+        <a class="btn btn-primary" id="homeLink" href="/">🏠 返回首页</a>
+        <button class="btn btn-ghost" id="backBtn" type="button">← 返回上一页</button>
+      </div>
+      <p class="error-tips">如果你是从别人那里拿到的链接，请联系分享者重新生成；<strong>登录后生成的页面</strong>可以在「我的页面」里找回。</p>
+      <p id="previewHint">当前是预览域名，无法直接返回主站首页，请使用分享者提供的主站地址。</p>
+    </section>
+  </main>
+</div>
+<script>
+(function(){
+function previewOrigin(){
+  var m=document.querySelector('meta[name="preview-origin"]');
+  return m&&m.content?m.content:"";
+}
+var isPreview=false;
+try{isPreview=!!previewOrigin()&&new URL(previewOrigin()).origin===location.origin}catch(e){}
+if(isPreview){
+  var brand=document.getElementById("brandLink");
+  if(brand){brand.removeAttribute("href");brand.style.cursor="default"}
+  var home=document.getElementById("homeLink");
+  if(home)home.style.display="none";
+  var hint=document.getElementById("previewHint");
+  if(hint)hint.classList.add("show");
+}
+document.getElementById("backBtn").addEventListener("click",function(){
+  if(window.history.length>1)window.history.back();
+  else if(!isPreview)location.href="/";
+});
+})();
+</script>
+</body>
+</html>

@@ -22,6 +22,7 @@ tar czf - \
   --exclude=./node_modules \
   --exclude=./.git \
   --exclude=./.env \
+  --exclude=./docker-compose.override.yml \
   --exclude=./deploy.sh \
   . \
   | ssh -i "$KEY" \

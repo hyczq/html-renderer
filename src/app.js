@@ -56,9 +56,42 @@ function isPreviewHost(req) {
   return actual === expected || stripDefaultPort(actual) === stripDefaultPort(expected);
 }
 
-async function servePreview(req, res, code) {
+function sendNotFound(req, res, preview) {
+  return sendHtml(
+    res,
+    config.render(config.templates.notFound, renderVars()),
+    {
+      'Content-Security-Policy': preview ? CSP_PREVIEW : CSP_PAGE,
+      'X-Robots-Tag': 'noindex, nofollow',
+    },
+    404
+  );
+}
+
+/** 静态公共资源与品牌无关，预览域也可只读获取，供 404 / 页面外壳使用。 */
+function serveStaticAsset(res, pathname) {
+  if (pathname === '/avatar.svg') {
+    res.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' });
+    res.end(config.avatarSvg);
+    return true;
+  }
+  if (pathname === '/theme.css' || pathname === '/theme.js') {
+    const isCss = pathname === '/theme.css';
+    res.writeHead(200, {
+      'Content-Type': isCss ? 'text/css;charset=UTF-8' : 'text/javascript;charset=UTF-8',
+      'Cache-Control': 'public, max-age=300',
+      'X-Content-Type-Options': 'nosniff',
+      'Cross-Origin-Resource-Policy': 'same-origin',
+    });
+    res.end(isCss ? config.themeCss : config.themeJs);
+    return true;
+  }
+  return false;
+}
+
+async function servePreview(req, res, code, preview = false) {
   const paste = await store.readPaste(code);
-  if (!paste) return sendText(res, '页面不存在或已过期', 404);
+  if (!paste) return sendNotFound(req, res, preview);
 
   // hash 已知时先判断缓存，避免 304 还去读 2MB 正文。
   const hashEtag = paste.hash ? '"' + paste.hash + '"' : '';
@@ -100,15 +133,19 @@ function createServer() {
     const previewMatch = pathname.match(/^\/p\/([A-Za-z0-9]{4,32})\/?$/);
 
     try {
+      const isGet = req.method === 'GET' || req.method === 'HEAD';
+      if (isGet && serveStaticAsset(res, pathname)) return;
+
       // 预览域名是独立 origin：只允许只读预览，其他一律 404。
       if (isPreviewHost(req)) {
-        if ((req.method === 'GET' || req.method === 'HEAD') && previewMatch) {
-          return servePreview(req, res, previewMatch[1]);
+        if (isGet && previewMatch) {
+          return servePreview(req, res, previewMatch[1], true);
         }
+        if (isGet) return sendNotFound(req, res, true);
         return sendText(res, 'Not Found', 404);
       }
 
-      if (req.method === 'GET' || req.method === 'HEAD') {
+      if (isGet) {
         if (pathname === '/' || pathname === '/index.html') {
           if (!auth.anonIdFrom(req)) {
             res.setHeader('Set-Cookie', auth.anonCookie(req, crypto.randomBytes(16).toString('hex')));
@@ -126,21 +163,6 @@ function createServer() {
           return sendHtml(res, config.render(config.templates.my, renderVars()), {
             'Content-Security-Policy': CSP_PAGE,
           });
-        }
-        if (pathname === '/avatar.svg') {
-          res.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' });
-          return res.end(config.avatarSvg);
-        }
-        // 全站共享样式与主题脚本：集中维护设计令牌，避免各页面样式分叉。
-        if (pathname === '/theme.css' || pathname === '/theme.js') {
-          const isCss = pathname === '/theme.css';
-          res.writeHead(200, {
-            'Content-Type': isCss ? 'text/css;charset=UTF-8' : 'text/javascript;charset=UTF-8',
-            'Cache-Control': 'public, max-age=300',
-            'X-Content-Type-Options': 'nosniff',
-            'Cross-Origin-Resource-Policy': 'same-origin',
-          });
-          return res.end(isCss ? config.themeCss : config.themeJs);
         }
         if (pathname === '/healthz') return sendText(res, 'ok');
 
@@ -165,7 +187,10 @@ function createServer() {
           return handlers.handleMy(req, res, u, await auth.currentUser(req));
         }
 
-        return sendText(res, pathname.startsWith('/p/') ? '页面不存在或已过期' : 'Not Found', 404);
+        if (pathname.startsWith('/api/')) {
+          return sendJson(res, { success: false, error: 'Not Found' }, 404);
+        }
+        return sendNotFound(req, res, false);
       }
 
       if (req.method === 'POST') {

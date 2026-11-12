@@ -78,8 +78,8 @@ function sendText(res, text, status = 200, type = 'text/plain;charset=UTF-8') {
   });
 }
 
-function sendHtml(res, html, extra = {}) {
-  sendBody(res, html, 200, {
+function sendHtml(res, html, extra = {}, status = 200) {
+  sendBody(res, html, status, {
     'Content-Type': 'text/html;charset=UTF-8',
     'Cache-Control': 'no-store',
     'X-Content-Type-Options': 'nosniff',

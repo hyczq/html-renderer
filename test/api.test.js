@@ -361,9 +361,22 @@ test('HTML 渲染器 API 冒烟测试', async (t) => {
     assert.match(res.json.error, /不允许访问该地址/);
   });
 
-  await t.test('未知路径返回 404', async () => {
+  await t.test('未知路径返回样式化 404', async () => {
     const res = await client.get('/nope');
     assert.equal(res.status, 404);
+    assert.match(String(res.headers.get('content-type')), /text\/html/);
+    assert.match(res.text, /class="card error-card"/);
+    assert.match(res.text, /页面不存在或已过期/);
+    assert.match(res.text, /href="\/theme\.css"/);
+
+    const missing = await client.get('/p/ZZZZZZZZ');
+    assert.equal(missing.status, 404);
+    assert.match(missing.text, /class="card error-card"/);
+    assert.match(missing.text, /页面不存在或已过期/);
+
+    const api = await client.json('/api/nope');
+    assert.equal(api.status, 404);
+    assert.equal(api.json.success, false);
   });
 
   assert.equal(stderr, '', '服务不应向 stderr 输出错误');
@@ -441,6 +454,20 @@ test('预览独立域名隔离', async (t) => {
       JSON.stringify({ type: 'code', code: '<html></html>' })
     );
     assert.equal(post.status, 404);
+  });
+
+  await t.test('预览域链接失效时返回样式化 404', async () => {
+    const res = await rawGet(`${baseUrl}/p/ZZZZZZZZ`, { Host: previewHost });
+    assert.equal(res.status, 404);
+    assert.match(String(res.headers['content-type']), /text\/html/);
+    assert.match(res.body.toString('utf8'), /class="card error-card"/);
+    assert.match(res.body.toString('utf8'), /页面不存在或已过期/);
+    assert.equal(res.headers['set-cookie'], undefined);
+
+    const css = await rawGet(`${baseUrl}/theme.css`, { Host: previewHost });
+    assert.equal(css.status, 200);
+    assert.match(String(css.headers['content-type']), /text\/css/);
+    assert.equal(css.headers['set-cookie'], undefined);
   });
 
   await t.test('主站账号与页面仍正常，链接指向预览域', async () => {

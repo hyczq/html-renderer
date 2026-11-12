@@ -17,7 +17,7 @@
 - **移动端友好**：响应式布局、刘海屏安全区域、触控尺寸与输入防缩放，文本响应 gzip 压缩省流量。
 - **统一视觉**：首页、我的页面、登录与编辑页共享 `public/theme.css` 设计令牌与组件（顶栏 / 卡片 / 按钮 / 表单），布局不再各自分叉。
 - **完整体验**：深色模式、编辑链接、我的页面、搜索/筛选/分页与快捷键。
-- **可验证**：23 项测试覆盖核心流程、预览隔离、Cookie 安全、SSRF 边界、索引重建与 blob 回收，CI 在 Node 18/20/22/24 上回归。
+- **可验证**：24 项测试覆盖核心流程、预览隔离、Cookie 安全、SSRF 边界、索引重建与 blob 回收，CI 在 Node 18/20/22/24 上回归。
 
 ## 功能
 
@@ -28,6 +28,7 @@
 | 📤 上传文件 | 浏览器读取 `.html/.htm` 后提交（≤ 2 MB） |
 | 🔗 永久链接 | `GET /p/<code>` 返回存储的 HTML；配置预览域后主站只做 302 跳转 |
 | 🛡️ 预览隔离 | 独立预览域名只提供只读页面，不暴露 API、不写 Cookie；未配置时默认 CSP sandbox |
+| 🧭 404 页面 | 不存在的链接返回与全站一致的样式化提示，支持返回首页 / 上一页 |
 | ✏️ 编辑链接 | `GET /edit/<code>#key=<editKey>`，凭密钥读取/保存（查询参数 `?key=` 仍兼容） |
 | 👤 注册/登录 | 用户名 + 密码，scrypt 哈希，30 天签名 Cookie 会话 |
 | 📁 我的页面 | 登录后 `/my` 查看全部历史链接，支持搜索、复制、编辑、删除 |
@@ -67,6 +68,8 @@ curl http://127.0.0.1:8899/healthz   # -> ok
 ```
 
 默认映射 `8899:3000`，数据落在 `./data`（bind mount，随宿主机备份）。若修改 `docker-compose.yml` 中的端口映射，请同步调整访问地址。
+
+服务器本地差异（如额外端口、资源限制）建议放在 `docker-compose.override.yml`：Compose 会自动合并，该文件已被 `.gitignore` 忽略，整目录部署也不会覆盖它。
 
 ### 反向代理
 
@@ -195,7 +198,7 @@ src/
   handlers.js             # 业务处理器（生成/读取/保存/重命名/删除等）
   app.js                  # 路由、CSP、预览 ETag/304
   bootstrap.js            # 建目录、密钥、旧数据迁移
-public/                   # index / edit / login / my 页面、theme.css/theme.js 与 avatar.svg
+public/                   # index / edit / login / my / 404 页面、theme.css/theme.js 与 avatar.svg
 test/api.test.js          # 端到端冒烟测试（node:test）
 scripts/doctor.js         # 数据自检：缺失 blob / hash 不一致 / 孤儿 blob
 Dockerfile
