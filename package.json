@@ -1,0 +1,34 @@
+{
+  "name": "html-renderer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Self-hosted HTML renderer: paste, upload or fetch HTML and get permanent preview links, with accounts and edit keys. Zero-dependency Node.js.",
+  "main": "server.js",
+  "license": "MIT",
+  "author": "Hyczq",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hyczq/html-renderer.git"
+  },
+  "homepage": "https://github.com/hyczq/html-renderer#readme",
+  "bugs": {
+    "url": "https://github.com/hyczq/html-renderer/issues"
+  },
+  "keywords": [
+    "html",
+    "renderer",
+    "preview",
+    "pastebin",
+    "self-hosted",
+    "nodejs",
+    "zero-dependency"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "DATA_DIR=./data node --watch server.js",
+    "test": "node --test test/api.test.js"
+  }
+}

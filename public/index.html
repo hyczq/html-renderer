@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0b0e" media="(prefers-color-scheme: dark)">
+<title>{{BRAND}}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#f2f2f7;--bg2:#fff;--card:rgba(255,255,255,.72);--cardh:rgba(255,255,255,.88);--txt:#1c1c1e;--txt2:#3a3a3c;--txt3:#8e8e93;--bd:rgba(60,60,67,.08);--ac:#007aff;--sh:0 20px 50px rgba(0,0,0,.06);--gr:linear-gradient(135deg,#007aff,#5856d6);--tab:rgba(118,118,128,.12);--taba:#fff;--in:rgba(118,118,128,.06);--rb:rgba(0,122,255,.06);--rbd:rgba(0,122,255,.15);--eb:rgba(255,59,48,.06);--ebd:rgba(255,59,48,.15);--mb:rgba(255,255,255,.85);--mt:#007aff;--mbd:rgba(0,122,255,.15);--key-bg:rgba(52,199,89,.1);--key-bd:rgba(52,199,89,.3);--key-tx:#34c759}
+[data-theme="dark"]{--bg:#0b0b0e;--bg2:#1c1c1e;--card:rgba(28,28,30,.75);--cardh:rgba(44,44,46,.9);--txt:#f5f5f7;--txt2:#aeaeb2;--txt3:#636366;--bd:rgba(255,255,255,.08);--ac:#0a84ff;--sh:0 20px 50px rgba(0,0,0,.7);--tab:rgba(118,118,128,.18);--taba:#2c2c2e;--in:rgba(118,118,128,.1);--rb:rgba(10,132,255,.1);--rbd:rgba(10,132,255,.2);--eb:rgba(255,69,58,.08);--ebd:rgba(255,69,58,.18);--mb:rgba(28,28,30,.85);--mt:#0a84ff;--mbd:rgba(10,132,255,.2);--key-bg:rgba(52,199,89,.15);--key-bd:rgba(52,199,89,.4);--key-tx:#30d158}
+body{font-family:-apple-system,Helvetica Neue,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;display:flex;justify-content:center;align-items:center;padding:24px 16px;padding-top:80px;transition:background .35s,color .35s}
+.mw{position:fixed;top:0;left:0;right:0;z-index:999;background:var(--mb);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--mbd);box-shadow:0 2px 12px rgba(0,122,255,.08);padding:8px 0;overflow:hidden}
+.mc{display:flex;align-items:center;justify-content:center;gap:12px;font-weight:600;font-size:.88rem;white-space:nowrap;overflow:hidden;padding:0 12px}
+.ml{display:inline-block;padding-left:100%;animation:mq 20s linear infinite;color:var(--mt);text-decoration:none;font-weight:600}
+.ml span{display:inline-block;padding-right:50px}
+.ml .bdg{background:var(--gr);padding:4px 16px;border-radius:40px;font-size:.78rem;font-weight:700;margin-left:8px;color:#fff}
+@keyframes mq{0%{transform:translate(0,0)}100%{transform:translate(-100%,0)}}
+@media(max-width:640px){.mc{font-size:.72rem;gap:6px}.ml .bdg{padding:2px 10px;font-size:.65rem}body{padding-top:68px;padding-left:12px;padding-right:12px}}
+.box{max-width:720px;width:100%;background:var(--card);backdrop-filter:saturate(180%) blur(24px);-webkit-backdrop-filter:saturate(180%) blur(24px);border-radius:44px;padding:40px 36px;box-shadow:var(--sh),inset 0 0 0 .5px rgba(255,255,255,.1);border:.5px solid var(--bd)}
+.hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px}
+.br{display:flex;align-items:center;gap:14px}
+.av{width:48px;height:48px;border-radius:50%;object-fit:cover;background:var(--bd);border:1px solid var(--bd);flex-shrink:0}
+.bt{display:flex;flex-direction:column}
+.bn{font-size:22px;font-weight:700;letter-spacing:-.3px;background:var(--gr);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.2}
+.bs{font-size:12px;font-weight:500;color:var(--txt3);letter-spacing:.2px;margin-top:2px}
+.tt{width:44px;height:44px;border-radius:50%;background:var(--tab);border:.5px solid var(--bd);color:var(--txt2);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tc{display:flex;gap:4px;margin-bottom:32px;background:var(--tab);border-radius:40px;padding:4px}
+.tb{flex:1;padding:10px 8px;border:none;border-radius:32px;font-size:14px;font-weight:600;cursor:pointer;background:transparent;color:var(--txt3);font-family:inherit}
+.tb.active{background:var(--taba);color:var(--txt);box-shadow:0 8px 30px rgba(0,0,0,.04);border:.5px solid var(--bd)}
+.pn{display:none}.pn.active{display:block}
+.ig{margin-bottom:24px}
+.ig label{display:block;font-size:13px;font-weight:600;color:var(--txt2);margin-bottom:8px}
+textarea,.dz{width:100%;padding:16px 18px;border:1.5px solid var(--bd);border-radius:18px;font-size:15px;font-family:SF Mono,Menlo,monospace;background:var(--in);color:var(--txt);line-height:1.5;resize:vertical}
+textarea{min-height:96px}
+textarea:focus{outline:none;border-color:var(--ac);background:var(--bg2);box-shadow:0 0 0 4px rgba(0,122,255,.08)}
+.dz{min-height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;border-style:dashed;gap:8px}
+.dz:hover{border-color:var(--ac);background:var(--cardh)}
+.di{font-size:36px;opacity:.7}
+.dt{font-size:15px;font-weight:500;color:var(--txt2)}
+.dh{font-size:13px;color:var(--txt3)}
+.fn{margin-top:10px;font-size:14px;font-weight:500;color:#007aff;padding-left:4px}
+.btn{width:100%;padding:16px 20px;border:none;border-radius:40px;font-size:17px;font-weight:600;cursor:pointer;background:var(--gr);color:#fff;box-shadow:0 4px 16px rgba(0,122,255,.18);font-family:inherit}
+.btn:hover:not(:disabled){transform:scale(1.01)}
+.btn:active:not(:disabled){transform:scale(.97)}
+.btn:disabled{opacity:.5;cursor:default}
+.rb{margin-top:28px;border-radius:20px;display:none;overflow:hidden;border:.5px solid var(--bd);background:var(--bg2)}
+.rb.show{display:block}
+.rb.success{border-color:var(--rbd);background:var(--rb)}
+.rb.error{border-color:var(--ebd);background:var(--eb)}
+.ri{padding:18px 20px}
+.rl{font-size:12px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.3px;margin-bottom:10px}
+.rk{display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:12px 16px;background:var(--card);border-radius:16px;border:.5px solid var(--bd);margin-bottom:10px}
+.rk a{color:#007aff;text-decoration:none;font-weight:500;font-size:14px;word-break:break-all;flex:1;min-width:0}
+.rk .lbl{font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;display:block}
+.rk.edit-link{background:var(--key-bg);border-color:var(--key-bd)}
+.rk.edit-link .lbl{color:var(--key-tx)}
+.rk.edit-link a{color:var(--key-tx)}
+.cb{padding:6px 14px;border:.5px solid var(--bd);border-radius:30px;background:transparent;color:var(--txt2);cursor:pointer;font-size:12px;font-weight:500;font-family:inherit;white-space:nowrap}
+.cb:hover{background:var(--cardh)}
+.exp-info{padding:10px 14px;background:rgba(0,122,255,.06);border:1px solid rgba(0,122,255,.15);border-radius:12px;font-size:12px;color:var(--ac);margin-bottom:10px}
+.warn{margin-top:10px;padding:10px 14px;background:rgba(255,159,10,.12);border:1px solid rgba(255,159,10,.3);border-radius:12px;font-size:12px;color:#ff9f0a;line-height:1.5}
+.et{color:#ff3b30;padding:4px 0;font-weight:500}
+.copy-all{padding:10px 16px;border:1px solid var(--bd);border-radius:12px;background:transparent;color:var(--txt2);cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;width:100%;margin-top:8px}
+.copy-all:hover{background:var(--cardh)}
+.ha{display:flex;align-items:center;gap:8px}.ub{font-size:13px;font-weight:600;color:var(--ac);text-decoration:none;padding:8px 14px;border-radius:30px;background:var(--tab);border:.5px solid var(--bd);white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis}.ub:hover{background:var(--cardh)}@media(max-width:600px){.ub{font-size:12px;padding:6px 10px;max-width:104px}.ha{gap:6px}}
+@media(max-width:600px){body{padding:16px 12px;padding-top:72px}.box{padding:28px 20px;border-radius:32px}.bn{font-size:19px}.av{width:40px;height:40px}.tb{font-size:12px;padding:8px 4px}.btn{font-size:16px;padding:14px}.rk{flex-direction:column;align-items:stretch;gap:8px}.rk .cb{align-self:flex-end}}
+.tip2{margin-top:14px;font-size:12px;color:var(--txt3);text-align:center;line-height:1.6}
+.ig input{width:100%;padding:15px 18px;border:1.5px solid var(--bd);border-radius:18px;font-size:15px;font-family:inherit;background:var(--in);color:var(--txt);line-height:1.4}
+.ig input:focus{outline:none;border-color:var(--ac);background:var(--bg2);box-shadow:0 0 0 4px rgba(0,122,255,.08)}
+.hintline{margin-top:12px;font-size:12px;color:var(--txt3);text-align:center;line-height:1.6}.hintline a{color:var(--ac);text-decoration:none;font-weight:600}.warn a{color:inherit;font-weight:700;text-decoration:underline}@media(max-width:420px){.av{width:40px;height:40px}.bn{font-size:18px}.ub{max-width:84px;font-size:11.5px;padding:6px 8px}}
+</style>
+<link rel="icon" href="/avatar.svg">
+</head>
+<body>
+<div class="mw"><div class="mc">
+<span style="color:var(--mt);font-weight:700">🚀</span>
+<div class="ml"><span>✨ {{BRAND}} · 永久链接 · 零依赖自托管 · 支持 URL / 代码 / 上传文件<span class="bdg">立即体验 ➜</span><span style="opacity:.3;margin:0 14px">│</span>✨ {{BRAND}} · 永久链接 · 零依赖自托管 · 支持 URL / 代码 / 上传文件<span class="bdg">立即体验 ➜</span></span></div>
+<span style="color:var(--mt);font-weight:700">⚡</span>
+</div></div>
+<div class="box">
+<header class="hd"><div class="br">
+<img class="av" src="/avatar.svg" alt="{{BRAND}}">
+<div class="bt"><span class="bn">{{BRAND}}</span><span class="bs">永久链接 · 自动去重 · 历史记录</span></div>
+</div><div class="ha"><a class="ub" id="ub" href="/login">👤 登录</a><button class="tt" id="tt" aria-label="切换深色模式"><span id="ti">🌙</span></button></div></header>
+<div class="tc"><button class="tb active" data-tab="url">🌐 从 URL</button><button class="tb" data-tab="code">📝 粘贴代码</button><button class="tb" data-tab="upload">📤 上传文件</button></div>
+<div class="pn active" id="p-url"><div class="ig"><label>GitHub / Bitbucket 原始链接</label><textarea id="urlInput" placeholder="https://raw.githubusercontent.com/用户/仓库/分支/文件.html"></textarea></div></div>
+<div class="pn" id="p-code"><div class="ig"><label>直接粘贴 HTML 代码</label><textarea id="codeInput" placeholder="&lt;!DOCTYPE html&gt;&#10;&lt;html&gt;&#10;&lt;head&gt;&lt;title&gt;我的页面&lt;/title&gt;&lt;/head&gt;&#10;&lt;body&gt;&lt;h1&gt;Hello World&lt;/h1&gt;&lt;/body&gt;&#10;&lt;/html&gt;"></textarea></div></div>
+<div class="pn" id="p-upload"><div class="ig"><label>上传 HTML 文件（最大 2MB）</label><div class="dz" id="dz"><div class="di">📄</div><div class="dt">拖拽或点击选择文件</div><div class="dh">支持 .html / .htm · 最大 2MB</div><input type="file" id="fi" accept=".html,.htm" style="display:none"></div><div class="fn" id="fn"></div></div></div>
+<div class="ig"><label>页面名称（可选）</label><input id="pageName" maxlength="60" placeholder="例如：公司官网预览 / 游戏 demo，方便日后查找"></div>
+<button class="btn" id="genBtn">🚀 生成永久链接</button>
+<p class="tip2">登录后自动保存历史记录；相同内容自动复用，不重复存储 · Ctrl/⌘ + Enter 快速生成</p>
+<div class="rb" id="genResult"><div class="ri"></div></div>
+</div>
+<script>
+(function(){
+function gs(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function ss(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+var tt=document.getElementById("tt"),ti=document.getElementById("ti"),he=document.documentElement;
+var pd=window.matchMedia&&window.matchMedia("(prefers-color-scheme:dark)").matches;
+var ct=gs("theme")||(pd?"dark":"light");
+function at(t){he.setAttribute("data-theme",t);ct=t;ss("theme",t);ti.textContent=t==="light"?"🌙":"☀️"}
+at(ct);
+tt.addEventListener("click",function(){at(ct==="light"?"dark":"light")});
+var tabs=document.querySelectorAll(".tb");
+var pns={url:document.getElementById("p-url"),code:document.getElementById("p-code"),upload:document.getElementById("p-upload")};
+var curTab="url";
+for(var i=0;i<tabs.length;i++){tabs[i].addEventListener("click",function(){
+for(var j=0;j<tabs.length;j++)tabs[j].classList.remove("active");
+this.classList.add("active");
+for(var k in pns)pns[k].classList.remove("active");
+curTab=this.getAttribute("data-tab");
+pns[curTab].classList.add("active");
+document.getElementById("genResult").classList.remove("show");
+})}
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+function cp(txt,btn){
+var done=function(){var o=btn.textContent;btn.textContent="已复制!";setTimeout(function(){btn.textContent=o},2000)};
+if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done).catch(function(){fa()})}else{fa()}
+function fa(){var ta=document.createElement("textarea");ta.value=txt;ta.style.position="fixed";ta.style.top="0";ta.style.left="0";ta.style.opacity="0";document.body.appendChild(ta);ta.focus();ta.select();var ok=false;try{ok=document.execCommand("copy")}catch(e){}document.body.removeChild(ta);if(ok)done();else prompt("请手动复制：",txt)}
+}
+function sr(el,data,isErr){
+isErr=isErr||false;
+var inner=el.querySelector(".ri")||el;
+el.className="rb show"+(isErr?" error":" success");
+if(isErr){inner.innerHTML="<div class=\"et\">❌ "+esc(data)+"</div>";return}
+var pv=window.location.origin+"/p/"+data.code;
+var ed=window.location.origin+"/edit/"+data.code+"?key="+data.editKey;
+inner.innerHTML="<div class=\"rl\">"+(data.reused?"♻️ 相同内容已存在，已复用原链接（未重复存储）":"✅ 永久链接已生成")+"</div>"+
+(data.name?'<div class="exp-info">🏷️ 页面名称：'+esc(data.name)+'</div>':"")+
+"<div class=\"rk\"><div style=\"flex:1;min-width:0\"><span class=\"lbl\">🔗 预览链接（分享这个）</span><a href=\""+pv+"\" target=\"_blank\">"+pv+"</a></div><button class=\"cb\" id=\"c1\">复制</button></div>"+
+"<div class=\"rk edit-link\"><div style=\"flex:1;min-width:0\"><span class=\"lbl\">✏️ 编辑链接（自己保存）</span><a href=\""+ed+"\" target=\"_blank\">"+ed+"</a></div><button class=\"cb\" id=\"c2\">复制</button></div>"+
+"<div class=\"warn\">"+(window.__loggedIn?'编辑链接已保存到 <a href="/my">我的页面</a>，可随时找回。':'⚠️ 编辑链接只显示这一次，请立即保存！丢失后无法找回。')+"</div>"+
+"<button class=\"copy-all\" id=\"call\">📋 复制全部信息</button>"+
+"<div class=\"hintline\">"+(window.__loggedIn?'已保存到 <a href="/my">我的页面</a>':'<a href="/login">登录</a>后可保存历史，方便下次查找')+"</div>";
+try{el.scrollIntoView({behavior:"smooth",block:"nearest"})}catch(e){}
+var c1=inner.querySelector("#c1"),c2=inner.querySelector("#c2"),call=inner.querySelector("#call");
+if(c1)c1.addEventListener("click",function(){cp(pv,this)});
+if(c2)c2.addEventListener("click",function(){cp(ed,this)});
+if(call)call.addEventListener("click",function(){
+var txt="预览："+pv+"\n编辑："+ed;
+cp(txt,this);
+});
+}
+async function gl(payload,el){
+el.classList.remove("show");
+var inner=el.querySelector(".ri")||el;
+inner.innerHTML="<div style=\"padding:12px 0;color:var(--txt3)\">⏳ 生成中...</div>";
+el.className="rb show";
+var btn=document.getElementById("genBtn");
+if(btn){btn.disabled=true;btn.dataset.old=btn.textContent;btn.textContent="⏳ 生成中..."}
+try{
+var r=await fetch("/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+var d=await r.json();
+if(d.success)sr(el,d);else sr(el,d.error||"生成失败",true);
+}catch(e){sr(el,"网络错误，请重试",true)}
+finally{
+if(btn){btn.disabled=false;btn.textContent=btn.dataset.old||"🚀 生成永久链接"}
+}
+}
+function nm(){return document.getElementById("pageName").value.trim()}
+["urlInput","codeInput"].forEach(function(id){
+var el=document.getElementById(id);
+if(el)el.addEventListener("keydown",function(e){
+if((e.ctrlKey||e.metaKey)&&e.key==="Enter"){e.preventDefault();document.getElementById("genBtn").click()}
+});
+});
+document.getElementById("genBtn").addEventListener("click",function(){
+if(curTab==="url"){
+var u=document.getElementById("urlInput").value.trim();
+if(!u){sr(document.getElementById("genResult"),"请输入有效的 URL",true);return}
+try{new URL(u)}catch(e){sr(document.getElementById("genResult"),"URL 格式无效",true);return}
+gl({type:"url",url:u,name:nm()},document.getElementById("genResult"));
+}else if(curTab==="code"){
+var c=document.getElementById("codeInput").value.trim();
+if(!c){sr(document.getElementById("genResult"),"请粘贴 HTML 代码",true);return}
+gl({type:"code",code:c,name:nm()},document.getElementById("genResult"));
+}else{
+var sf2=window.__selectedFile;
+if(!sf2){sr(document.getElementById("genResult"),"请先选择文件",true);return}
+var rd=new FileReader();
+rd.onload=function(ev){gl({type:"code",code:ev.target.result,name:nm()},document.getElementById("genResult"))};
+rd.onerror=function(){sr(document.getElementById("genResult"),"文件读取失败",true)};
+rd.readAsText(sf2);
+}
+});
+var dz=document.getElementById("dz"),fi=document.getElementById("fi"),fnn=document.getElementById("fn");
+dz.addEventListener("click",function(){fi.click()});
+dz.addEventListener("dragover",function(e){e.preventDefault();dz.style.borderColor="var(--ac)"});
+dz.addEventListener("dragleave",function(){dz.style.borderColor=""});
+dz.addEventListener("drop",function(e){e.preventDefault();dz.style.borderColor="";if(e.dataTransfer.files.length>0)hf(e.dataTransfer.files[0])});
+fi.addEventListener("change",function(e){if(e.target.files.length>0)hf(e.target.files[0])});
+function hf(f){
+if(!f.name.endsWith(".html")&&!f.name.endsWith(".htm")){alert("仅支持 .html / .htm");return}
+if(f.size>2*1024*1024){alert("文件过大，最大 2MB（当前 "+(f.size/1024/1024).toFixed(2)+"MB）");return}
+window.__selectedFile=f;fnn.textContent="✅ "+f.name+" ("+(f.size/1024).toFixed(1)+" KB)";
+document.getElementById("genResult").classList.remove("show");
+}
+})();
+</script>
+<script>
+(function(){
+fetch("/api/me").then(function(r){return r.json()}).then(function(d){
+if(d.success){window.__loggedIn=true;var a=document.getElementById("ub");a.textContent="👤 "+d.user.username;a.href="/my";a.title="我的页面"}
+}).catch(function(){});
+})();
+</script>
+</body>
+</html>

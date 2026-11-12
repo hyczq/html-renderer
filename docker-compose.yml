@@ -1,0 +1,27 @@
+services:
+  html-renderer:
+    container_name: html-renderer
+    build:
+      context: .
+    image: local/html-renderer:1.0.0
+    restart: unless-stopped
+    ports:
+      - "8899:3000"
+    volumes:
+      - ./data:/data
+    environment:
+      PORT: "3000"
+      DATA_DIR: "/data"
+      BRAND_NAME: "${BRAND_NAME:-HTML 渲染器}"
+      TRUST_PROXY: "${TRUST_PROXY:-1}"
+      MAX_PASTE_BYTES: "${MAX_PASTE_BYTES:-2097152}"
+      FETCH_TIMEOUT_MS: "${FETCH_TIMEOUT_MS:-12000}"
+    mem_limit: 128m
+    pids_limit: 128
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

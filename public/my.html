@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0b0e" media="(prefers-color-scheme: dark)">
+<title>我的页面 - {{BRAND}}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#f2f2f7;--bg2:#fff;--card:rgba(255,255,255,.75);--cardh:rgba(255,255,255,.92);--txt:#1c1c1e;--txt2:#3a3a3c;--txt3:#8e8e93;--bd:rgba(60,60,67,.08);--ac:#007aff;--sh:0 20px 50px rgba(0,0,0,.06);--gr:linear-gradient(135deg,#007aff,#5856d6);--tab:rgba(118,118,128,.12);--in:rgba(118,118,128,.06);--eb:rgba(255,59,48,.08)}
+[data-theme="dark"]{--bg:#0b0b0e;--bg2:#1c1c1e;--card:rgba(28,28,30,.75);--cardh:rgba(44,44,46,.9);--txt:#f5f5f7;--txt2:#aeaeb2;--txt3:#636366;--bd:rgba(255,255,255,.08);--ac:#0a84ff;--sh:0 20px 50px rgba(0,0,0,.7);--tab:rgba(118,118,128,.18);--in:rgba(118,118,128,.1);--eb:rgba(255,69,58,.1)}
+body{font-family:-apple-system,Helvetica Neue,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;padding:28px 16px 70px;transition:background .35s,color .35s}
+.wrap{max-width:860px;margin:0 auto}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit}
+.av{width:44px;height:44px;border-radius:50%;border:1px solid var(--bd)}
+.bn{font-size:19px;font-weight:700;letter-spacing:-.3px;background:var(--gr);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.bs{font-size:12px;color:var(--txt3);margin-top:1px}
+.acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.who{font-size:13px;color:var(--txt2);font-weight:600;padding-right:4px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn2{padding:9px 16px;border-radius:30px;border:.5px solid var(--bd);background:var(--tab);color:var(--txt2);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center}
+.btn2:hover{background:var(--cardh)}
+.btn2.primary{background:var(--gr);color:#fff;border:none;box-shadow:0 4px 14px rgba(0,122,255,.2)}
+.stats{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.stat{background:var(--card);border:.5px solid var(--bd);border-radius:18px;padding:14px 18px;flex:1;min-width:120px;box-shadow:var(--sh)}
+.stat .v{font-size:22px;font-weight:700;background:var(--gr);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.stat .k{font-size:12px;color:var(--txt3);margin-top:2px}
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.toolbar input{flex:1;padding:12px 16px;border-radius:16px;border:1.5px solid var(--bd);background:var(--in);color:var(--txt);font-size:14px;font-family:inherit}
+.toolbar input:focus{outline:none;border-color:var(--ac);background:var(--bg2)}
+.count{font-size:12px;color:var(--txt3);white-space:nowrap}
+.filters{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.fbtn{padding:7px 14px;border-radius:24px;border:.5px solid var(--bd);background:transparent;color:var(--txt3);font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit}
+.fbtn:hover{background:var(--tab)}
+.fbtn.active{background:var(--tab);color:var(--txt);border-color:var(--bd);box-shadow:0 4px 12px rgba(0,0,0,.04)}
+.list{display:flex;flex-direction:column;gap:12px}
+.item{background:var(--card);border:.5px solid var(--bd);border-radius:22px;padding:16px 18px;box-shadow:var(--sh)}
+.pname{font-size:16px;font-weight:700;margin-bottom:7px;line-height:1.35;word-break:break-word}
+.pname.unnamed{color:var(--txt3);font-weight:500;font-size:14px}
+.ih{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.code{font-family:SF Mono,Menlo,monospace;font-size:13px;font-weight:600;color:var(--ac)}
+.badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:var(--tab);color:var(--txt3)}
+.meta{font-size:12px;color:var(--txt3);margin-top:6px}
+.ib{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.act{padding:7px 14px;border-radius:24px;border:.5px solid var(--bd);background:var(--tab);color:var(--txt2);font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center}
+.act:hover{background:var(--cardh)}
+.act.danger{color:#ff3b30}
+.act.danger:hover{background:var(--eb)}
+.empty{text-align:center;padding:70px 20px;color:var(--txt3);font-size:14px;line-height:2}
+.empty a{color:var(--ac);font-weight:600;text-decoration:none}
+.linkbtn{border:none;background:transparent;color:var(--ac);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:underline}
+.loading{padding:40px;text-align:center;color:var(--txt3);font-size:14px}
+.more{display:none;margin:18px auto 0;padding:11px 22px;border-radius:30px;border:.5px solid var(--bd);background:var(--card);color:var(--txt2);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+.more:hover{background:var(--cardh)}
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--txt);color:var(--bg2);padding:12px 24px;border-radius:30px;font-size:14px;font-weight:500;opacity:0;transition:all .3s;z-index:99;pointer-events:none;max-width:90vw;text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:20px;z-index:100}
+.modal.show{display:flex}
+.mbox{background:var(--bg2);border-radius:24px;padding:24px;width:100%;max-width:420px;box-shadow:0 30px 80px rgba(0,0,0,.28)}
+.mtitle{font-size:17px;font-weight:700;margin-bottom:14px}
+.mbox input{width:100%;padding:13px 15px;border:1.5px solid var(--bd);border-radius:14px;background:var(--in);color:var(--txt);font-size:15px;font-family:inherit}
+.mbox input:focus{outline:none;border-color:var(--ac);background:var(--card);box-shadow:0 0 0 4px rgba(0,122,255,.08)}
+.mbtns{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+@media(max-width:600px){body{padding:16px 12px 50px}.bn{font-size:17px}.who{display:none}.item{border-radius:18px;padding:14px}.toolbar input{font-size:13px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="/"><img class="av" src="/avatar.svg" alt="{{BRAND}}"><div><div class="bn">{{BRAND}}</div><div class="bs">我的页面</div></div></a>
+    <div class="acts">
+      <span class="who" id="who"></span>
+      <a class="btn2 primary" href="/">＋ 新建</a>
+      <button class="btn2" id="logout">退出</button>
+    </div>
+  </header>
+  <div class="stats" id="stats"></div>
+  <div class="toolbar">
+    <input id="q" placeholder="搜索名称 / code / 类型（按 / 聚焦）">
+    <span class="count" id="count"></span>
+  </div>
+  <div class="filters" id="filters">
+    <button class="fbtn active" data-f="all">全部</button>
+    <button class="fbtn" data-f="code">📝 代码</button>
+    <button class="fbtn" data-f="url">🔗 URL</button>
+  </div>
+  <div class="list" id="list"><div class="loading">加载中...</div></div>
+  <button class="more" id="more">加载更多</button>
+</div>
+<div class="toast" id="toast"></div>
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mtitle">
+  <div class="mbox">
+    <div class="mtitle" id="mtitle">重命名页面</div>
+    <input id="mname" maxlength="60" placeholder="给这个页面起个名字（留空则清除）" autocomplete="off">
+    <div class="mbtns"><button class="btn2" id="mcancel">取消</button><button class="btn2 primary" id="msave">保存</button></div>
+  </div>
+</div>
+<script>
+(function(){
+function gs(k){try{return localStorage.getItem(k)}catch(e){return null}}
+var he=document.documentElement;
+var pd=window.matchMedia&&window.matchMedia("(prefers-color-scheme:dark)").matches;
+he.setAttribute("data-theme",gs("theme")||(pd?"dark":"light"));
+
+var all=[], total=0, stats={count:0,bytes:0}, curFilter="all", loading=false, renameTarget=null;
+
+function toast(m){var t=document.getElementById("toast");t.textContent=m;t.className="toast show";setTimeout(function(){t.className="toast"},1800)}
+function fmtSize(n){if(!n)return"0 B";if(n<1024)return n+" B";if(n<1048576)return (n/1024).toFixed(1)+" KB";return (n/1048576).toFixed(2)+" MB"}
+function pad(n){return n<10?"0"+n:""+n}
+function fmtDate(s){try{var d=new Date(s);if(isNaN(d))return s;return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+" "+pad(d.getHours())+":"+pad(d.getMinutes())}catch(e){return s}}
+function copyText(txt,btn){
+  var done=function(){var o=btn.textContent;btn.textContent="已复制";setTimeout(function(){btn.textContent=o},1500)};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done).catch(fallback)}else{fallback()}
+  function fallback(){var ta=document.createElement("textarea");ta.value=txt;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();try{document.execCommand("copy");done()}catch(e){}document.body.removeChild(ta)}
+}
+function loadStats(){
+  document.getElementById("stats").innerHTML=
+    '<div class="stat"><div class="v">'+stats.count+'</div><div class="k">生成的页面</div></div>'+
+    '<div class="stat"><div class="v">'+fmtSize(stats.bytes)+'</div><div class="k">占用空间（去重后）</div></div>';
+}
+function updateMore(){
+  var b=document.getElementById("more");
+  b.style.display=all.length<total?"block":"none";
+  b.textContent="加载更多（已显示 "+all.length+" / "+total+"）";
+}
+function render(){
+  var q=(document.getElementById("q").value||"").trim().toLowerCase();
+  var items=all.filter(function(x){
+    if(curFilter!=="all"&&x.type!==curFilter)return false;
+    if(!q)return true;
+    return (x.name||"").toLowerCase().indexOf(q)>=0||x.code.toLowerCase().indexOf(q)>=0||(x.type||"").toLowerCase().indexOf(q)>=0;
+  });
+  document.getElementById("count").textContent=q||curFilter!=="all"?"匹配 "+items.length+" / 共 "+total+" 条":"共 "+total+" 条";
+  var list=document.getElementById("list");
+  list.innerHTML="";
+  if(!items.length){
+    if(total===0){
+      list.innerHTML='<div class="empty">还没有生成过页面<br><a href="/">去生成第一个 →</a></div>';
+    }else{
+      list.innerHTML='<div class="empty">没有匹配的记录<br><button class="linkbtn" id="clear">清除筛选</button></div>';
+      var c=document.getElementById("clear");
+      if(c)c.addEventListener("click",function(){document.getElementById("q").value="";curFilter="all";document.querySelectorAll(".fbtn").forEach(function(b){b.classList.toggle("active",b.dataset.f==="all")});render()});
+    }
+    return;
+  }
+  items.forEach(function(x){
+    var el=document.createElement("div");el.className="item";
+    var nmEl=document.createElement("div");nmEl.className="pname"+(x.name?"":" unnamed");nmEl.textContent=x.name||"未命名页面";
+    var ih=document.createElement("div");ih.className="ih";
+    var code=document.createElement("span");code.className="code";code.textContent=x.code;
+    var badge=document.createElement("span");badge.className="badge";badge.textContent=x.type==="url"?"🔗 URL":"📝 代码";
+    ih.appendChild(code);ih.appendChild(badge);
+    var meta=document.createElement("div");meta.className="meta";
+    meta.textContent=fmtSize(x.size)+" · 创建于 "+fmtDate(x.createdAt)+(x.updatedAt&&x.updatedAt!==x.createdAt?" · 更新于 "+fmtDate(x.updatedAt):"");
+    var ib=document.createElement("div");ib.className="ib";
+    var pv=document.createElement("a");pv.className="act";pv.href="/p/"+encodeURIComponent(x.code);pv.target="_blank";pv.rel="noopener";pv.textContent="🔍 预览";
+    var ed=document.createElement("a");ed.className="act";ed.href="/edit/"+encodeURIComponent(x.code)+"?key="+encodeURIComponent(x.editKey);ed.target="_blank";ed.rel="noopener";ed.textContent="✏️ 编辑";
+    var rn=document.createElement("button");rn.className="act";rn.textContent="🏷️ 重命名";rn.onclick=function(){openRename(x)};
+    var cp=document.createElement("button");cp.className="act";cp.textContent="📋 复制链接";cp.onclick=function(){copyText(location.origin+"/p/"+x.code,cp)};
+    var dl=document.createElement("button");dl.className="act danger";dl.textContent="🗑 删除";dl.onclick=function(){del(x,dl)};
+    ib.appendChild(pv);ib.appendChild(ed);ib.appendChild(rn);ib.appendChild(cp);ib.appendChild(dl);
+    el.appendChild(nmEl);el.appendChild(ih);el.appendChild(meta);el.appendChild(ib);
+    list.appendChild(el);
+  });
+}
+function openRename(x){
+  renameTarget=x;
+  var m=document.getElementById("modal"),inp=document.getElementById("mname");
+  document.getElementById("mtitle").textContent="重命名 "+x.code;
+  inp.value=x.name||"";
+  m.classList.add("show");
+  document.body.style.overflow="hidden";
+  setTimeout(function(){inp.focus();inp.select()},50);
+}
+function closeRename(){document.getElementById("modal").classList.remove("show");document.body.style.overflow="";renameTarget=null}
+function saveRename(){
+  if(!renameTarget)return;
+  var btn=document.getElementById("msave");btn.disabled=true;btn.textContent="保存中...";
+  fetch("/api/rename",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:renameTarget.code,name:document.getElementById("mname").value.trim()})})
+    .then(function(r){return r.json()}).then(function(d){
+      if(d.success){renameTarget.name=d.name||"";toast(d.name?"已重命名":"已清除名称");closeRename();render()}
+      else toast(d.error||"重命名失败");
+    }).catch(function(){toast("网络错误")}).finally(function(){btn.disabled=false;btn.textContent="保存"});
+}
+function del(x,btn){
+  if(!confirm("确定删除「"+(x.name||x.code)+"」？删除后预览链接将失效，不可恢复。"))return;
+  btn.disabled=true;btn.textContent="删除中...";
+  fetch("/api/delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:x.code})})
+    .then(function(r){return r.json()}).then(function(d){
+      if(d.success){
+        all=all.filter(function(y){return y.code!==x.code});
+        total=Math.max(0,total-1);stats.count=Math.max(0,stats.count-1);stats.bytes=Math.max(0,stats.bytes-(x.size||0));
+        toast("已删除");loadStats();render();updateMore();
+      }else{toast(d.error||"删除失败");btn.disabled=false;btn.textContent="🗑 删除"}
+    }).catch(function(){toast("网络错误");btn.disabled=false;btn.textContent="🗑 删除"});
+}
+function load(reset){
+  if(loading)return;
+  loading=true;
+  var offset=reset?0:all.length;
+  fetch("/api/my?offset="+offset+"&limit=50").then(function(r){return r.json()}).then(function(m){
+    if(!m.success){location.href="/login";return}
+    total=m.total||0;stats=m.stats||{count:0,bytes:0};
+    all=reset?m.items||[]:all.concat(m.items||[]);
+    loadStats();render();updateMore();
+  }).catch(function(){toast("加载失败，请刷新重试")}).finally(function(){loading=false});
+}
+document.getElementById("q").addEventListener("input",render);
+document.querySelectorAll(".fbtn").forEach(function(b){
+  b.addEventListener("click",function(){
+    curFilter=b.dataset.f;
+    document.querySelectorAll(".fbtn").forEach(function(x){x.classList.toggle("active",x===b)});
+    render();
+  });
+});
+document.getElementById("more").addEventListener("click",function(){load(false)});
+document.getElementById("mcancel").addEventListener("click",closeRename);
+document.getElementById("msave").addEventListener("click",saveRename);
+document.getElementById("modal").addEventListener("click",function(e){if(e.target===this)closeRename()});
+document.getElementById("mname").addEventListener("keydown",function(e){
+  if(e.key==="Enter"){e.preventDefault();saveRename()}
+  if(e.key==="Escape"){e.preventDefault();closeRename()}
+});
+document.addEventListener("keydown",function(e){
+  if(e.key==="Escape"&&document.getElementById("modal").classList.contains("show"))closeRename();
+  if(e.key==="/"&&document.activeElement.tagName!=="INPUT"&&document.activeElement.tagName!=="TEXTAREA"){e.preventDefault();document.getElementById("q").focus()}
+});
+document.getElementById("logout").addEventListener("click",function(){
+  fetch("/api/logout",{method:"POST"}).then(function(){location.href="/"}).catch(function(){location.href="/"});
+});
+fetch("/api/me").then(function(r){return r.json()}).then(function(d){
+  if(!d.success){location.href="/login";return}
+  document.getElementById("who").textContent="👤 "+d.user.username;
+  load(true);
+}).catch(function(){location.href="/login"});
+})();
+</script>
+</body>
+</html>

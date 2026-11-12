@@ -1,0 +1,98 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>编辑 - {{BRAND}}</title><style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#f2f2f7;--card:#fff;--txt:#1c1c1e;--txt2:#3a3a3c;--txt3:#8e8e93;--bd:rgba(60,60,67,.08);--ac:#007aff;--dg:#ff3b30;--sc:#34c759}
+[data-theme="dark"]{--bg:#0b0b0e;--card:#1c1c1e;--txt:#f5f5f7;--txt2:#aeaeb2;--txt3:#636366;--bd:rgba(255,255,255,.08);--ac:#0a84ff}
+body{font-family:-apple-system,Helvetica Neue,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;padding:20px;display:flex;flex-direction:column;align-items:center}
+.wp{max-width:900px;width:100%}
+.tp{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px;flex-wrap:wrap}
+.tp h1{font-size:20px;font-weight:700}
+.tp h1 span{color:var(--ac);font-family:SF Mono,monospace}
+.info{padding:12px 16px;background:rgba(0,122,255,.08);border:1px solid rgba(0,122,255,.2);border-radius:12px;font-size:13px;color:var(--ac);margin-bottom:16px;line-height:1.5}
+.info.warn{background:rgba(255,59,48,.08);border-color:rgba(255,59,48,.25);color:#ff3b30}
+textarea{width:100%;min-height:60vh;padding:16px;border:1.5px solid var(--bd);border-radius:14px;background:var(--card);color:var(--txt);font-family:SF Mono,Menlo,monospace;font-size:13px;line-height:1.6;resize:vertical}
+textarea:focus{outline:none;border-color:var(--ac);box-shadow:0 0 0 4px rgba(0,122,255,.1)}
+.nrow{margin-bottom:14px}
+.nrow label{display:block;font-size:13px;font-weight:600;color:var(--txt2);margin-bottom:8px}
+.nrow input{width:100%;padding:13px 16px;border:1.5px solid var(--bd);border-radius:14px;background:var(--card);color:var(--txt);font-size:14px;font-family:inherit}
+.nrow input:focus{outline:none;border-color:var(--ac);box-shadow:0 0 0 4px rgba(0,122,255,.1)}
+.bar{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;align-items:center}
+.hint{margin-left:auto;font-size:12px;color:var(--txt3);display:flex;align-items:center;gap:8px}
+.size{font-family:SF Mono,Menlo,monospace}
+.size.warn{color:#ff9f0a}
+.size.danger{color:#ff3b30}
+.btn{padding:12px 24px;border:none;border-radius:30px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit}
+.bp{background:var(--ac);color:#fff}
+.bp:active{transform:scale(.97)}
+.bp:disabled{opacity:.5;cursor:default}
+.bg2{background:transparent;color:var(--txt2);border:1px solid var(--bd)}
+.bg2:hover{background:var(--card);color:var(--txt)}
+.ts{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--txt);color:var(--card);padding:12px 24px;border-radius:30px;font-size:14px;font-weight:500;opacity:0;transition:all .3s;z-index:9999;pointer-events:none;max-width:90vw;text-align:center}
+.ts.show{transform:translateX(-50%) translateY(0);opacity:1}
+.ts.error{background:var(--dg);color:#fff}
+.ts.success{background:var(--sc);color:#fff}
+@media(max-width:600px){body{padding:12px}.tp h1{font-size:17px}textarea{min-height:50vh;font-size:12px}}
+</style></head><body>
+<div class="wp">
+<div class="tp"><h1>✏️ 编辑 <span>{{CODE}}</span></h1></div>
+<div class="info">✏️ 修改下面的 HTML 代码，点击"保存"即可立即生效。原链接和编辑密钥保持不变。</div>
+<div class="nrow"><label>页面名称（方便日后查找）</label><input id="nm" maxlength="60" placeholder="例如：公司官网预览 / 游戏 demo"></div>
+<textarea id="ta" placeholder="加载中..."></textarea>
+<div class="bar"><button class="btn bp" id="svb" disabled>💾 保存修改</button><a class="btn bg2" href="/p/{{CODE}}" target="_blank" rel="noopener" style="text-decoration:none;text-align:center">🔍 预览</a><span class="hint"><span id="size" class="size">0 B</span><span>Ctrl/⌘ + S 保存</span></span></div>
+</div>
+<div class="ts" id="ts"></div>
+<script>
+(function(){
+var code="{{CODE}}";
+var key=new URLSearchParams(location.search).get("key")||"";
+var ta=document.getElementById("ta");
+var nm=document.getElementById("nm");
+var svb=document.getElementById("svb");
+var sizeEl=document.getElementById("size");
+var dirty=false;
+function updateSize(){
+  var n=0;
+  try{n=new Blob([ta.value]).size}catch(e){n=ta.value.length}
+  sizeEl.textContent=(n<1024?n+" B":n<1048576?(n/1024).toFixed(1)+" KB":(n/1048576).toFixed(2)+" MB")+" / 2 MB";
+  sizeEl.className="size"+(n>2097152?" danger":n>1887436?" warn":"");
+}
+function markDirty(){dirty=true;updateSize()}
+ta.addEventListener("input",markDirty);
+nm.addEventListener("input",function(){dirty=true});
+ta.addEventListener("keydown",function(e){
+  if(e.key==="Tab"){
+    e.preventDefault();
+    var s=ta.selectionStart,en=ta.selectionEnd;
+    ta.value=ta.value.slice(0,s)+"  "+ta.value.slice(en);
+    ta.selectionStart=ta.selectionEnd=s+2;
+    markDirty();
+  }
+});
+document.addEventListener("keydown",function(e){
+  if((e.ctrlKey||e.metaKey)&&(e.key==="s"||e.key==="S")){
+    e.preventDefault();
+    if(!svb.disabled)svb.click();
+  }
+});
+window.addEventListener("beforeunload",function(e){
+  if(dirty){e.preventDefault();e.returnValue=""}
+});
+function sts(m,t){var ts=document.getElementById("ts");ts.textContent=m;ts.className="ts show"+(t?" "+t:"");setTimeout(function(){ts.className="ts"+(t?" "+t:"")},2200)}
+fetch("/api/get?code="+encodeURIComponent(code)+"&key="+encodeURIComponent(key)).then(function(r){return r.json()}).then(function(d){
+if(d.success){ta.value=d.html;nm.value=d.name||"";if(d.name)document.title=d.name+" - 编辑";svb.disabled=false;dirty=false;updateSize()}
+else{ta.value="";ta.disabled=true;sts("加载失败："+(d.error||"未知错误"),"error")}
+}).catch(function(e){ta.value="";ta.disabled=true;sts("网络错误","error")});
+svb.addEventListener("click",async function(){
+svb.disabled=true;var old=svb.textContent;svb.textContent="保存中...";
+try{
+var r=await fetch("/api/save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:code,key:key,html:ta.value,name:nm.value.trim()})});
+var d=await r.json();
+if(d.success){dirty=false;sts("✅ 已保存，刷新预览页可见","success")}
+else sts("保存失败："+(d.error||"未知错误"),"error");
+}catch(e){sts("网络错误","error")}
+finally{svb.disabled=false;svb.textContent=old}
+});
+})();
+</script>
+</body></html>
