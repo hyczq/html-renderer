@@ -191,7 +191,7 @@ test('HTML 渲染器 API 冒烟测试', async (t) => {
     }
     // 账号安全页使用侧边导航 + 单面板切换，而不是把所有表单堆在一屏。
     const settingsPage = await client.get('/settings');
-    assert.match(settingsPage.text, /class="card security-nav"/);
+    assert.match(settingsPage.text, /class="security-nav"/);
     assert.match(settingsPage.text, /id="panel-password"/);
     assert.match(settingsPage.text, /id="panel-danger"[^>]*hidden/);
 
