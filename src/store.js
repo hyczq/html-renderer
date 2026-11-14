@@ -14,6 +14,7 @@
  * - 启动时扫描 pastes/ 重建内存索引；不再依赖 index/user-pastes（旧文件会被忽略）。
  * - 所有 paste 变更在同一个写锁内完成，索引与文件同步更新。
  * - blob 使用引用计数 + 延迟 GC，避免并发创建/删除时误删仍在引用的正文。
+ * - 链接记录支持 expiresAt / 单次消耗 / 密码哈希；后台定时清扫过期记录。
  * - writeJsonAtomic 对文件和目录做 fsync，降低掉电丢数据窗口。
  */
 
@@ -36,6 +37,7 @@ const state = {
 };
 const pendingBlobDeletes = new Map(); // hash -> deleteAfter timestamp
 let gcTimer = null;
+let expiryTimer = null;
 
 async function readJsonFile(file, fallback) {
   try {
@@ -234,14 +236,40 @@ async function loadIndex() {
     }, interval);
     gcTimer.unref();
   }
-  return { loaded, failed };
+
+  // 只统计不可用记录；真正删除由 bootstrap 显式调用 sweepExpired()，
+  // 避免 doctor 这类只读脚本意外删除数据。
+  let expired = 0;
+  for (const paste of state.pastes.values()) {
+    if (isExpired(paste) || isConsumed(paste)) expired++;
+  }
+  return { loaded, failed, expired };
+}
+
+/** 记录是否已过有效期。expiresAt 缺失（旧数据）视为永久。 */
+function isExpired(paste, now = Date.now()) {
+  if (!paste || !paste.expiresAt) return false;
+  const ts = Date.parse(paste.expiresAt);
+  // 无法解析的过期时间按“已过期”处理，避免失效控制静默 fail-open。
+  return !Number.isFinite(ts) || ts <= now;
+}
+
+/** 单次链接是否已被访问消耗。 */
+function isConsumed(paste) {
+  return !!(paste && paste.singleUse && paste.consumedAt);
+}
+
+/** 可正常访问：存在、未过期、未被单次访问消耗。 */
+function isAvailable(paste) {
+  return !!paste && !isExpired(paste) && !isConsumed(paste);
 }
 
 function readPaste(code) {
   const paste = state.pastes.get(code);
-  return paste ? { ...paste } : null;
+  return isAvailable(paste) ? { ...paste } : null;
 }
 
+/** 内部使用：不过滤过期/已消耗状态。 */
 function getPaste(code) {
   return state.pastes.get(code) || null;
 }
@@ -256,29 +284,31 @@ function listUserPastes(userId) {
   const out = [];
   for (const code of codes) {
     const paste = state.pastes.get(code);
-    if (paste) out.push({ ...paste });
+    if (isAvailable(paste)) out.push({ ...paste });
   }
   return out;
 }
 
-function findUserPasteByHash(userId, hash) {
+function findUserPastesByHash(userId, hash) {
   const codes = state.byUserHash.get(userHashKey(userId, hash));
-  if (!codes) return null;
+  if (!codes) return [];
+  const out = [];
   for (const code of codes) {
     const paste = state.pastes.get(code);
-    if (paste) return { ...paste };
+    if (isAvailable(paste)) out.push({ ...paste });
   }
-  return null;
+  return out;
 }
 
-function findAnonPaste(anonId, hash) {
+function findAnonPastesByHash(anonId, hash) {
   const codes = state.byAnonHash.get(anonHashKey(anonId, hash));
-  if (!codes) return null;
+  if (!codes) return [];
+  const out = [];
   for (const code of codes) {
     const paste = state.pastes.get(code);
-    if (paste) return { ...paste };
+    if (isAvailable(paste)) out.push({ ...paste });
   }
-  return null;
+  return out;
 }
 
 async function pasteContent(paste) {
@@ -331,6 +361,13 @@ async function createPasteLocked(input) {
     type: input.type || 'code',
     sourceUrl: input.type === 'url' ? input.sourceUrl : undefined,
     size: input.size,
+    expiry: input.expiry || 'never',
+    expiresAt: input.expiresAt || null,
+    singleUse: !!input.singleUse,
+    views: 0,
+    passwordHash: input.passwordHash || null,
+    passwordSalt: input.passwordSalt || null,
+    passwordUpdatedAt: input.passwordUpdatedAt || null,
     createdAt: now,
     updatedAt: now,
   };
@@ -371,6 +408,59 @@ async function deletePasteLocked(code) {
   await fsp.rm(pasteFile(code), { force: true });
   unindexPaste(paste);
   return { ...paste };
+}
+
+/**
+ * 原子消耗一次单次链接。并发请求只有一个能拿到记录，其余返回 null。
+ * 非单次链接直接返回当前记录，不会写盘。
+ */
+async function consumeSingleUse(code) {
+  return withLock(async () => {
+    const paste = state.pastes.get(code);
+    if (!isAvailable(paste)) return null;
+    if (!paste.singleUse) return { ...paste };
+    const next = {
+      ...paste,
+      views: Number(paste.views || 0) + 1,
+      consumedAt: new Date().toISOString(),
+      lastViewedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    await writeJsonAtomic(pasteFile(code), next);
+    state.pastes.set(code, next);
+    return { ...next };
+  });
+}
+
+/**
+ * 删除所有已过期或已被单次访问消耗的链接记录。
+ * 正文由 blob 引用计数延迟回收，不会误删仍被其他链接引用的内容。
+ */
+async function sweepExpired() {
+  return withLock(async () => {
+    const now = Date.now();
+    let removed = 0;
+    for (const paste of [...state.pastes.values()]) {
+      if (!isExpired(paste, now) && !isConsumed(paste)) continue;
+      try {
+        await fsp.rm(pasteFile(paste.code), { force: true });
+        unindexPaste(paste);
+        removed++;
+      } catch (e) {
+        console.error('[store] sweep expired failed', paste.code, e && e.message);
+      }
+    }
+    return removed;
+  });
+}
+
+/** 由服务进程启动过期清扫；doctor 等只读脚本不调用。 */
+function startExpirySweeper() {
+  if (expiryTimer) return;
+  expiryTimer = setInterval(() => {
+    sweepExpired().catch((e) => console.error('[store] expiry sweep failed', e && e.message));
+  }, config.LINK_SWEEP_INTERVAL_MS);
+  expiryTimer.unref();
 }
 
 async function uniqueCode() {
@@ -458,19 +548,25 @@ module.exports = {
   urlHost,
   pasteFile,
   blobFile,
+  isExpired,
+  isConsumed,
+  isAvailable,
   loadIndex,
   readPaste,
   getPaste,
   allPastes,
   listUserPastes,
-  findUserPasteByHash,
-  findAnonPaste,
+  findUserPastesByHash,
+  findAnonPastesByHash,
   pasteContent,
   ensureBlob,
   createPasteLocked,
   updatePasteLocked,
   renamePasteLocked,
   deletePasteLocked,
+  consumeSingleUse,
+  sweepExpired,
+  startExpirySweeper,
   uniqueCode,
   sweepBlobs,
   listOrphanBlobs,

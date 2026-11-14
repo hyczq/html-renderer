@@ -153,6 +153,12 @@ async function readJson(req) {
   }
 }
 
+/** 读取 application/x-www-form-urlencoded 表单（链接解锁页使用）。 */
+async function readForm(req, limit = 4096) {
+  const buf = await readBody(req, limit);
+  return new URLSearchParams(buf.toString('utf8'));
+}
+
 /** 代理场景下优先取 CF / XFF 首个地址，否则取 socket 地址。 */
 function clientIp(req) {
   if (TRUST_PROXY) {
@@ -184,6 +190,7 @@ module.exports = {
   readBody,
   sendBodyError,
   readJson,
+  readForm,
   clientIp,
   sameOrigin,
 };

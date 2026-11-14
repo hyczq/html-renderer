@@ -62,6 +62,9 @@ async function init() {
     console.error(`[store] ${index.failed} paste record(s) failed to load`);
   }
   console.log(`[store] index loaded: ${index.loaded} paste(s)`);
+  store.startExpirySweeper();
+  const removed = await store.sweepExpired();
+  if (removed) console.log(`[store] removed ${removed} expired paste(s)`);
   await backfillNames();
 }
 

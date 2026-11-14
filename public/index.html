@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0b0b0e" media="(prefers-color-scheme: dark)">
 <meta name="preview-origin" content="{{PREVIEW_ORIGIN}}">
+<meta name="default-expiry" content="{{DEFAULT_EXPIRY}}">
 <title>{{BRAND}}</title>
 <link rel="stylesheet" href="/theme.css">
 <script src="/theme.js"></script>
@@ -43,6 +44,27 @@
 .result .btn-block{margin-top:8px}
 .result .hint{margin-top:12px;text-align:center}
 .loading-inline{padding:12px 0;color:var(--txt3);font-size:14px}
+.link-options{margin:2px 0 18px;padding:14px 16px;border:1px solid var(--bd);border-radius:var(--r-md);background:var(--in)}
+.opt-row{display:flex;align-items:flex-start;gap:12px}
+.opt-row + .opt-row{margin-top:13px;padding-top:13px;border-top:1px dashed var(--bd)}
+.opt-label{flex:none;width:62px;padding-top:7px;color:var(--txt2);font-size:12.5px;font-weight:600}
+.chips{display:flex;flex:1;flex-wrap:wrap;gap:7px}
+.chip{padding:7px 12px;border:1px solid var(--bd);border-radius:var(--r-pill);background:var(--card);color:var(--txt2);font-size:12.5px;font-weight:600;cursor:pointer;transition:border-color .2s var(--ease),background .2s var(--ease),color .2s var(--ease)}
+.chip:hover{border-color:var(--ac);color:var(--ac-text)}
+.chip.active{border-color:transparent;background:var(--gr);color:#fff}
+.pw-line{display:flex;flex:1;align-items:center;flex-wrap:wrap;gap:8px;padding-top:2px}
+.switch{display:inline-flex;align-items:center;gap:7px;color:var(--txt2);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.switch input{width:16px;height:16px;accent-color:var(--ac)}
+.pw-mode{width:auto;min-width:172px;padding:9px 30px 9px 12px;font-size:12.5px}
+.pw-custom{width:auto;min-width:172px;padding:9px 12px;font-size:12.5px}
+.pw-code{display:inline-block;padding:2px 10px;border-radius:7px;background:var(--info-bg);color:var(--ac-text);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:16px;font-weight:700;letter-spacing:.18em}
+@media(max-width:600px){
+  .opt-row{flex-direction:column;gap:7px}
+  .opt-label{width:auto;padding-top:0}
+  .chip{min-height:36px;padding:7px 13px}
+  .pw-line{gap:8px}
+  .pw-mode,.pw-custom{flex:1 1 100%;width:100%}
+}
 @media(max-width:600px){
   .feature-bar{gap:6px;padding:8px 12px;font-size:11.5px}
   .feature-tag{padding:2px 8px;font-size:10.5px}
@@ -63,7 +85,7 @@
       <img class="brand-avatar" src="/avatar.svg" alt="">
       <span class="brand-text">
         <span class="brand-name">{{BRAND}}</span>
-        <span class="brand-sub">永久链接 · 自动去重 · 历史记录</span>
+        <span class="brand-sub">可设有效期 · 自动去重 · 历史记录</span>
       </span>
     </a>
     <div class="topbar-actions">
@@ -74,7 +96,7 @@
 
   <div class="feature-bar">
     <span aria-hidden="true">✨</span>
-    <span><strong>{{BRAND}}</strong> · 永久链接 · 零依赖自托管 · 支持 URL / 代码 / 上传文件</span>
+    <span><strong>{{BRAND}}</strong> · 链接有效期 · 访问密码 · 零依赖自托管</span>
     <span class="feature-tag">立即体验 ➜</span>
   </div>
 
@@ -117,7 +139,34 @@
       <input class="input" id="pageName" maxlength="60" placeholder="例如：公司官网预览 / 游戏 demo，方便日后查找" autocomplete="off">
     </div>
 
-    <button class="btn btn-primary btn-block" id="genBtn">🚀 生成永久链接</button>
+    <div class="link-options">
+      <div class="opt-row">
+        <span class="opt-label">⏳ 有效期</span>
+        <div class="chips" id="expiryChips" role="radiogroup" aria-label="链接有效期">
+          <button type="button" class="chip" role="radio" aria-checked="false" data-expiry="once">单次</button>
+          <button type="button" class="chip" role="radio" aria-checked="false" data-expiry="1d">1 天</button>
+          <button type="button" class="chip active" role="radio" aria-checked="true" data-expiry="7d">7 天</button>
+          <button type="button" class="chip" role="radio" aria-checked="false" data-expiry="30d">30 天</button>
+          <button type="button" class="chip" role="radio" aria-checked="false" data-expiry="1y">1 年</button>
+          <button type="button" class="chip" role="radio" aria-checked="false" data-expiry="never">永久</button>
+        </div>
+      </div>
+      <div class="opt-row">
+        <span class="opt-label">🔒 密码</span>
+        <div class="pw-line">
+          <label class="switch"><input type="checkbox" id="pwToggle"> 需要访问密码</label>
+          <select class="input pw-mode" id="pwMode" aria-label="密码方式" disabled>
+            <option value="auto">自动生成 6 位密码</option>
+            <option value="custom">自定义密码</option>
+          </select>
+          <input class="input pw-custom" id="pwCustom" type="password" maxlength="64" placeholder="输入 6-64 位密码" autocomplete="new-password" disabled hidden>
+          <button class="btn btn-ghost btn-sm" id="pwShow" type="button" hidden>显示</button>
+        </div>
+      </div>
+      <p class="hint" id="expiryHint">默认 7 天，过期后平台自动删除且无法恢复。</p>
+    </div>
+
+    <button class="btn btn-primary btn-block" id="genBtn">🚀 生成链接</button>
     <p class="hint">登录后自动保存历史记录；相同内容自动复用，不重复存储 · Ctrl/⌘ + Enter 快速生成</p>
     <div class="result" id="genResult" role="status" aria-live="polite"><div class="result-inner"></div></div>
   </main>
@@ -141,6 +190,13 @@ curTab=this.getAttribute("data-tab");
 pns[curTab].classList.add("active");
 document.getElementById("genResult").classList.remove("show");
 })}
+function pad(n){return n<10?"0"+n:""+n}
+function fmtDate(v){try{var d=new Date(v);if(isNaN(d))return String(v);return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+" "+pad(d.getHours())+":"+pad(d.getMinutes())}catch(e){return String(v)}}
+function expiryText(data){
+if(data.singleUse)return "单次访问（首次打开后立即失效；聊天预览也可能消耗；7 天内未访问也会过期）";
+if(!data.expiresAt)return "永久有效（不会自动删除）";
+return "至 "+fmtDate(data.expiresAt)+"（到期自动删除）";
+}
 function sr(el,data,isErr){
 isErr=isErr||false;
 var inner=el.querySelector(".result-inner")||el;
@@ -149,21 +205,45 @@ if(isErr){inner.innerHTML="<div class=\"et\">❌ "+esc(data)+"</div>";return}
 var pvBase=(document.querySelector('meta[name="preview-origin"]')||{}).content||window.location.origin;
 var pv=pvBase+"/p/"+data.code;
 var ed=window.location.origin+"/edit/"+data.code+"#key="+data.editKey;
-inner.innerHTML="<div class=\"result-label\">"+(data.reused?"♻️ 相同内容已存在，已复用原链接（未重复存储）":"✅ 永久链接已生成")+"</div>"+
+var exText=expiryText(data);
+inner.innerHTML="<div class=\"result-label\">"+(data.reused?"♻️ 相同内容已存在，已复用原链接（未重复存储）":"✅ 链接已生成")+"</div>"+
 (data.name?'<div class="notice">🏷️ 页面名称：'+esc(data.name)+'</div>':"")+
+'<div class="notice">⏳ 有效期：'+esc(exText)+'</div>'+
+(data.passwordProtected&&!data.password?'<div class="notice">🔒 已设置自定义访问密码</div>':'')+
+(data.password?'<div class="link-row"><div class="link-main"><span class="link-label">🔒 访问密码（仅显示这一次）</span><code class="pw-code">'+esc(data.password)+'</code></div><button class="btn btn-ghost btn-sm" id="c3">复制</button></div>':"")+
 "<div class=\"link-row\"><div class=\"link-main\"><span class=\"link-label\">🔗 预览链接（分享这个）</span><a href=\""+pv+"\" target=\"_blank\" rel=\"noopener\">"+pv+"</a></div><button class=\"btn btn-ghost btn-sm\" id=\"c1\">复制</button></div>"+
 "<div class=\"link-row edit\"><div class=\"link-main\"><span class=\"link-label\">✏️ 编辑链接（自己保存）</span><a href=\""+ed+"\" target=\"_blank\" rel=\"noopener\">"+ed+"</a></div><button class=\"btn btn-ghost btn-sm\" id=\"c2\">复制</button></div>"+
 "<div class=\"notice"+(window.__loggedIn?"":" warn")+"\">"+(window.__loggedIn?'编辑链接已保存到 <a href="/my">我的页面</a>，可随时找回。':'⚠️ 编辑链接只显示这一次，请立即保存！丢失后无法找回。')+"</div>"+
 "<button class=\"btn btn-ghost btn-block\" id=\"call\">📋 复制全部信息</button>"+
 "<p class=\"hint\">"+(window.__loggedIn?'已保存到 <a href="/my">我的页面</a>':'<a href="/login">登录</a>后可保存历史，方便下次查找')+"</p>";
 try{el.scrollIntoView({behavior:"smooth",block:"nearest"})}catch(e){}
-var c1=inner.querySelector("#c1"),c2=inner.querySelector("#c2"),call=inner.querySelector("#call");
+var c1=inner.querySelector("#c1"),c2=inner.querySelector("#c2"),c3=inner.querySelector("#c3"),call=inner.querySelector("#call");
 if(c1)c1.addEventListener("click",function(){cp(pv,this)});
 if(c2)c2.addEventListener("click",function(){cp(ed,this)});
+if(c3)c3.addEventListener("click",function(){cp(data.password,this)});
 if(call)call.addEventListener("click",function(){
-var txt="预览："+pv+"\n编辑："+ed;
-cp(txt,this);
+var lines=["预览："+pv,"编辑："+ed,"有效期："+exText];
+if(data.password)lines.push("访问密码："+data.password);
+cp(lines.join("\n"),this);
 });
+}
+function buildOptions(){
+var o={expiry:curExpiry};
+var t=document.getElementById("pwToggle");
+if(!t||!t.checked)return o;
+var mode=document.getElementById("pwMode").value;
+o.passwordMode=mode;
+if(mode==="custom"){
+var v=document.getElementById("pwCustom").value;
+if(v.length<6||v.length>64){sr(document.getElementById("genResult"),"访问密码需 6-64 位",true);return null}
+o.password=v;
+}
+return o;
+}
+function submitGenerate(payload){
+var o=buildOptions();
+if(!o)return;
+gl(Object.assign({},payload,o),document.getElementById("genResult"));
 }
 async function gl(payload,el){
 el.classList.remove("show");
@@ -178,9 +258,45 @@ var d=await r.json();
 if(d.success)sr(el,d);else sr(el,d.error||"生成失败",true);
 }catch(e){sr(el,"网络错误，请重试",true)}
 finally{
-if(btn){btn.disabled=false;btn.textContent=btn.dataset.old||"🚀 生成永久链接"}
+if(btn){btn.disabled=false;btn.textContent=btn.dataset.old||"🚀 生成链接"}
 }
 }
+var defaultExpiry=(document.querySelector('meta[name="default-expiry"]')||{}).content||"7d";
+var curExpiry=defaultExpiry;
+var chips=document.querySelectorAll("#expiryChips .chip");
+var EXPIRY_HINT={once:"首次打开后立即失效；聊天软件的链接预览也可能消耗。7 天内未访问也会自动过期。","1d":"生成后 1 天过期，到期自动删除。","7d":"生成后 7 天过期，到期自动删除。","30d":"生成后 30 天过期，到期自动删除。","1y":"生成后 1 年过期，到期自动删除。",never:"永久有效，不会自动删除。"};
+chips.forEach(function(chip){
+var on=chip.getAttribute("data-expiry")===curExpiry;
+chip.classList.toggle("active",on);chip.setAttribute("aria-checked",on?"true":"false");
+chip.addEventListener("click",function(){
+curExpiry=chip.getAttribute("data-expiry");
+chips.forEach(function(c){c.classList.toggle("active",c===chip);c.setAttribute("aria-checked",c===chip?"true":"false")});
+var hint=document.getElementById("expiryHint");
+if(hint)hint.textContent=EXPIRY_HINT[curExpiry]||"";
+});
+});
+var defaultHint=document.getElementById("expiryHint");
+if(defaultHint)defaultHint.textContent=EXPIRY_HINT[curExpiry]||defaultHint.textContent;
+var pwToggle=document.getElementById("pwToggle");
+var pwMode=document.getElementById("pwMode");
+var pwCustom=document.getElementById("pwCustom");
+var pwShow=document.getElementById("pwShow");
+function syncPassword(){
+var on=!!(pwToggle&&pwToggle.checked);
+if(pwMode){pwMode.disabled=!on;pwMode.style.display=on?"":"none"}
+var custom=on&&pwMode&&pwMode.value==="custom";
+if(pwCustom){pwCustom.disabled=!custom;pwCustom.hidden=!custom;if(!custom)pwCustom.value=""}
+if(pwShow){pwShow.hidden=!custom;pwShow.textContent="显示";if(pwCustom)pwCustom.type="password"}
+}
+if(pwToggle)pwToggle.addEventListener("change",syncPassword);
+if(pwMode)pwMode.addEventListener("change",syncPassword);
+if(pwShow)pwShow.addEventListener("click",function(){
+if(!pwCustom)return;
+var show=pwCustom.type==="password";
+pwCustom.type=show?"text":"password";
+pwShow.textContent=show?"隐藏":"显示";
+});
+syncPassword();
 function nm(){return document.getElementById("pageName").value.trim()}
 ["urlInput","codeInput"].forEach(function(id){
 var el=document.getElementById(id);
@@ -193,16 +309,16 @@ if(curTab==="url"){
 var u=document.getElementById("urlInput").value.trim();
 if(!u){sr(document.getElementById("genResult"),"请输入有效的 URL",true);return}
 try{new URL(u)}catch(e){sr(document.getElementById("genResult"),"URL 格式无效",true);return}
-gl({type:"url",url:u,name:nm()},document.getElementById("genResult"));
+submitGenerate({type:"url",url:u,name:nm()});
 }else if(curTab==="code"){
 var c=document.getElementById("codeInput").value.trim();
 if(!c){sr(document.getElementById("genResult"),"请粘贴 HTML 代码",true);return}
-gl({type:"code",code:c,name:nm()},document.getElementById("genResult"));
+submitGenerate({type:"code",code:c,name:nm()});
 }else{
 var sf2=window.__selectedFile;
 if(!sf2){sr(document.getElementById("genResult"),"请先选择文件",true);return}
 var rd=new FileReader();
-rd.onload=function(ev){gl({type:"code",code:ev.target.result,name:nm()},document.getElementById("genResult"))};
+rd.onload=function(ev){submitGenerate({type:"code",code:ev.target.result,name:nm()})};
 rd.onerror=function(){sr(document.getElementById("genResult"),"文件读取失败",true)};
 rd.readAsText(sf2);
 }

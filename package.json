@@ -2,7 +2,7 @@
   "name": "html-renderer",
   "version": "1.0.0",
   "private": true,
-  "description": "Self-hosted HTML renderer: paste, upload or fetch HTML and get permanent preview links, with accounts and edit keys. Zero-dependency Node.js.",
+  "description": "Self-hosted HTML renderer: paste, upload or fetch HTML and get preview links with optional expiry and access passwords, plus accounts and edit keys. Zero-dependency Node.js.",
   "main": "server.js",
   "license": "MIT",
   "author": "Hyczq",

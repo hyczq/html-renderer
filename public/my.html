@@ -33,6 +33,11 @@
 .meta{margin-top:6px;color:var(--txt3);font-size:12px;line-height:1.5}
 .ib{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
 .ib .act{font-weight:600}
+.badge-lock{background:var(--warn-bg);color:var(--warn-text)}
+.pw-result{margin-top:14px;text-align:left}
+.pw-secret{display:inline-block;margin-top:6px;padding:3px 10px;border-radius:7px;background:var(--info-bg);color:var(--ac-text);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:16px;font-weight:700;letter-spacing:.16em}
+.pw-actions{flex-wrap:wrap}
+.pw-actions .btn-danger{margin-right:auto}
 .more{display:none;width:100%;margin-top:8px}
 .list .empty{padding:44px 16px}
 @media(max-width:600px){
@@ -123,15 +128,37 @@
   </div>
 </div>
 
+<div class="modal" id="pwModal" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
+  <div class="modal-card">
+    <div class="modal-title" id="pwTitle">🔒 链接访问密码</div>
+    <p class="modal-desc" id="pwDesc"></p>
+    <input class="input" id="pwNew" type="password" maxlength="64" placeholder="留空则自动生成 6 位密码" autocomplete="new-password" spellcheck="false">
+    <div class="notice pw-result" id="pwResult" hidden></div>
+    <div class="modal-actions pw-actions">
+      <button class="btn btn-danger" id="pwRemove" type="button">关闭密码</button>
+      <button class="btn btn-ghost" id="pwCancel" type="button">取消</button>
+      <button class="btn btn-primary" id="pwSave" type="button">生成 / 重置</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
 function previewBase(){var m=document.querySelector('meta[name="preview-origin"]');return (m&&m.content)?m.content:location.origin}
-var all=[], total=0, stats={count:0,bytes:0}, curFilter="all", loading=false, renameTarget=null, deleteTarget=null, deleteTrigger=null, deleting=false;
+var all=[], total=0, stats={count:0,bytes:0}, curFilter="all", loading=false, renameTarget=null, deleteTarget=null, deleteTrigger=null, deleting=false, pwTarget=null, pwBusy=false;
 
 function toast(m){var t=document.getElementById("toast");t.textContent=m;t.className="toast show";setTimeout(function(){t.className="toast"},1800)}
 function fmtSize(n){if(!n)return"0 B";if(n<1024)return n+" B";if(n<1048576)return (n/1024).toFixed(1)+" KB";return (n/1048576).toFixed(2)+" MB"}
 function pad(n){return n<10?"0"+n:""+n}
 function fmtDate(s){try{var d=new Date(s);if(isNaN(d))return s;return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+" "+pad(d.getHours())+":"+pad(d.getMinutes())}catch(e){return s}}
+function expiryLabel(x){
+  if(x.singleUse)return "单次访问";
+  if(!x.expiresAt)return "永久有效";
+  var d=new Date(x.expiresAt);
+  if(isNaN(d))return "有效期至 "+x.expiresAt;
+  var left=Math.ceil((d.getTime()-Date.now())/86400000);
+  return "有效期至 "+fmtDate(x.expiresAt)+(left>0?"（剩 "+left+" 天）":"");
+}
 function copyText(txt,btn){
   var done=function(){var o=btn.textContent;btn.textContent="已复制";setTimeout(function(){btn.textContent=o},1500)};
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done).catch(fallback)}else{fallback()}
@@ -174,18 +201,72 @@ function render(){
     var code=document.createElement("span");code.className="code";code.textContent=x.code;
     var badge=document.createElement("span");badge.className="badge";badge.textContent=x.type==="url"?"🔗 URL":"📝 代码";
     ih.appendChild(code);ih.appendChild(badge);
+    if(x.passwordProtected){var lock=document.createElement("span");lock.className="badge badge-lock";lock.textContent="🔒 密码";ih.appendChild(lock)}
+    if(x.singleUse){var once=document.createElement("span");once.className="badge";once.textContent="⏳ 单次";ih.appendChild(once)}
     var meta=document.createElement("div");meta.className="meta";
-    meta.textContent=fmtSize(x.size)+" · 创建于 "+fmtDate(x.createdAt)+(x.updatedAt&&x.updatedAt!==x.createdAt?" · 更新于 "+fmtDate(x.updatedAt):"");
+    meta.textContent=fmtSize(x.size)+" · "+expiryLabel(x)+" · 创建于 "+fmtDate(x.createdAt)+(x.updatedAt&&x.updatedAt!==x.createdAt?" · 更新于 "+fmtDate(x.updatedAt):"");
     var ib=document.createElement("div");ib.className="ib";
     var pv=document.createElement("a");pv.className="btn btn-ghost btn-sm act";pv.href=previewBase()+"/p/"+encodeURIComponent(x.code);pv.target="_blank";pv.rel="noopener";pv.textContent="🔍 预览";
     var ed=document.createElement("a");ed.className="btn btn-ghost btn-sm act";ed.href="/edit/"+encodeURIComponent(x.code)+"#key="+encodeURIComponent(x.editKey);ed.target="_blank";ed.rel="noopener";ed.textContent="✏️ 编辑";
     var rn=document.createElement("button");rn.className="btn btn-ghost btn-sm act";rn.type="button";rn.textContent="🏷️ 重命名";rn.onclick=function(){openRename(x)};
     var cp=document.createElement("button");cp.className="btn btn-ghost btn-sm act";cp.type="button";cp.textContent="📋 复制链接";cp.onclick=function(){copyText(previewBase()+"/p/"+x.code,cp)};
+    var pw=document.createElement("button");pw.className="btn btn-ghost btn-sm act";pw.type="button";pw.textContent="🔒 密码";pw.onclick=function(){openPassword(x,pw)};
     var dl=document.createElement("button");dl.className="btn btn-danger btn-sm act";dl.type="button";dl.textContent="🗑 删除";dl.onclick=function(){openDelete(x,dl)};
-    ib.appendChild(pv);ib.appendChild(ed);ib.appendChild(rn);ib.appendChild(cp);ib.appendChild(dl);
+    ib.appendChild(pv);ib.appendChild(ed);ib.appendChild(rn);ib.appendChild(cp);ib.appendChild(pw);ib.appendChild(dl);
     el.appendChild(nmEl);el.appendChild(ih);el.appendChild(meta);el.appendChild(ib);
     list.appendChild(el);
   });
+}
+function openPassword(x,btn){
+  pwTarget=x;pwBusy=false;
+  var m=document.getElementById("pwModal");
+  var res=document.getElementById("pwResult");res.hidden=true;res.className="notice pw-result";res.innerHTML="";
+  var inp=document.getElementById("pwNew");inp.value="";inp.disabled=false;
+  document.getElementById("pwDesc").textContent=x.passwordProtected
+    ? "该链接已开启访问密码。留空可生成新的 6 位密码，或输入 6-64 位自定义密码后重置。"
+    : "该链接当前无需密码。留空可生成 6 位密码，或输入 6-64 位自定义密码。";
+  var rm=document.getElementById("pwRemove");rm.style.display=x.passwordProtected?"":"none";
+  var save=document.getElementById("pwSave");save.disabled=false;save.textContent="生成 / 重置";
+  m.classList.add("show");document.body.style.overflow="hidden";
+  setTimeout(function(){inp.focus()},50);
+}
+function closePassword(force){
+  if(pwBusy&&!force)return;
+  document.getElementById("pwModal").classList.remove("show");
+  document.body.style.overflow="";
+  pwTarget=null;
+}
+function setPassword(action){
+  if(!pwTarget||pwBusy)return;
+  var input=document.getElementById("pwNew");
+  var payload={code:pwTarget.code,action:action};
+  if(action==="set"){
+    var v=input.value;
+    if(v.length<6||v.length>64){toast("密码需 6-64 位");return}
+    payload.password=v;
+  }
+  var save=document.getElementById("pwSave"),rm=document.getElementById("pwRemove");
+  pwBusy=true;save.disabled=true;rm.disabled=true;save.textContent="处理中...";
+  function done(){
+    pwBusy=false;save.disabled=false;rm.disabled=false;save.textContent="生成 / 重置";
+  }
+  fetch("/api/link/password",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)})
+    .then(function(r){return r.json()}).then(function(d){
+      if(!d.success){toast(d.error||"操作失败");done();return}
+      pwTarget.passwordProtected=d.passwordProtected;
+      var res=document.getElementById("pwResult");
+      if(d.password){
+        res.hidden=false;res.className="notice pw-result";
+        res.innerHTML='<div>✅ 新密码（仅显示这一次，请立即保存）：</div><code class="pw-secret" id="pwSecret">'+d.password+'</code> <button class="btn btn-ghost btn-sm" id="pwCopy" type="button">复制</button>';
+        var c=document.getElementById("pwCopy");if(c)c.addEventListener("click",function(){copyText(d.password,c)});
+        input.value="";
+      }else{
+        res.hidden=false;res.className="notice pw-result";
+        res.textContent=d.passwordProtected?"✅ 自定义密码已生效":"✅ 已关闭访问密码";
+      }
+      document.getElementById("pwRemove").style.display=d.passwordProtected?"":"none";
+      render();done();
+    }).catch(function(){toast("网络错误");done()});
 }
 function openRename(x){
   renameTarget=x;
@@ -264,6 +345,10 @@ document.querySelectorAll(".fbtn").forEach(function(b){
   });
 });
 document.getElementById("more").addEventListener("click",function(){load(false)});
+document.getElementById("pwCancel").addEventListener("click",function(){closePassword()});
+document.getElementById("pwSave").addEventListener("click",function(){var v=document.getElementById("pwNew").value;setPassword(v?"set":"generate")});
+document.getElementById("pwRemove").addEventListener("click",function(){setPassword("remove")});
+document.getElementById("pwModal").addEventListener("click",function(e){if(e.target===this)closePassword()});
 document.getElementById("mcancel").addEventListener("click",closeRename);
 document.getElementById("msave").addEventListener("click",saveRename);
 document.getElementById("modal").addEventListener("click",function(e){if(e.target===this)closeRename()});
@@ -276,6 +361,7 @@ document.getElementById("mname").addEventListener("keydown",function(e){
 });
 document.addEventListener("keydown",function(e){
   if(e.key==="Escape"){
+    if(document.getElementById("pwModal").classList.contains("show")){e.preventDefault();closePassword();return}
     if(document.getElementById("delModal").classList.contains("show")){e.preventDefault();closeDelete();return}
     if(document.getElementById("modal").classList.contains("show")){e.preventDefault();closeRename();return}
   }

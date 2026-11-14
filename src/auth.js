@@ -92,6 +92,69 @@ async function verifyUserPassword(user, password) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
+/** 链接访问密码使用独立 salt 的 scrypt 哈希，不与账号密码共用凭据。 */
+async function hashLinkPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = await scryptHash(String(password), salt);
+  return { salt, hash };
+}
+
+async function verifyLinkPassword(paste, password) {
+  if (!paste || !paste.passwordHash || !paste.passwordSalt) return false;
+  const calc = await scryptHash(String(password || ''), paste.passwordSalt);
+  const a = Buffer.from(calc, 'hex');
+  const b = Buffer.from(String(paste.passwordHash), 'hex');
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+function unlockCookieName(code) {
+  return 'hr_pv_' + code;
+}
+
+function passwordStamp(passwordHash) {
+  return crypto.createHash('sha256').update(String(passwordHash)).digest('hex').slice(0, 16);
+}
+
+/** 解锁 Cookie：绑定 code、过期时间和当前密码哈希；重置密码后旧 Cookie 自动失效。 */
+function issueUnlockToken(code, passwordHash) {
+  const exp = Date.now() + config.LINK_UNLOCK_TTL_MS;
+  const payload = 'u1.' + code + '.' + exp + '.' + passwordStamp(passwordHash);
+  const sig = crypto.createHmac('sha256', SECRET).update(payload).digest('base64url');
+  return payload + '.' + sig;
+}
+
+function verifyUnlockToken(token, code, passwordHash) {
+  if (!token || typeof token !== 'string') return false;
+  const parts = token.split('.');
+  if (parts.length !== 5 || parts[0] !== 'u1' || parts[1] !== code) return false;
+  const exp = Number(parts[2]);
+  if (!Number.isFinite(exp) || exp < Date.now()) return false;
+  if (parts[3] !== passwordStamp(passwordHash)) return false;
+  const payload = parts.slice(0, 4).join('.');
+  const expected = crypto.createHmac('sha256', SECRET).update(payload).digest('base64url');
+  const a = Buffer.from(parts[4]);
+  const b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+function hasUnlock(req, paste) {
+  if (!paste || !paste.passwordHash) return true;
+  const cookies = parseCookies(req);
+  return verifyUnlockToken(cookies[unlockCookieName(paste.code)], paste.code, paste.passwordHash);
+}
+
+function unlockCookie(req, code, token) {
+  const parts = [
+    unlockCookieName(code) + '=' + token,
+    'Path=/p/' + code,
+    'HttpOnly',
+    'SameSite=Lax',
+    'Max-Age=' + Math.floor(config.LINK_UNLOCK_TTL_MS / 1000),
+  ];
+  if (isHttps(req)) parts.push('Secure');
+  return parts.join('; ');
+}
+
 function issueSession(userId, sessionEpoch = 0) {
   const exp = Date.now() + config.SESSION_TTL_MS;
   const epoch = Number(sessionEpoch) || 0;
@@ -321,6 +384,12 @@ module.exports = {
   loadSecret,
   createUser,
   verifyUserPassword,
+  hashLinkPassword,
+  verifyLinkPassword,
+  issueUnlockToken,
+  verifyUnlockToken,
+  hasUnlock,
+  unlockCookie,
   changePassword,
   logoutAll,
   createRecoveryCodes,

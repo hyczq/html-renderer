@@ -17,6 +17,7 @@ async function main() {
   const index = await store.loadIndex();
   const issues = [];
   if (index.failed) issues.push(`${index.failed} 条 paste 记录无法解析/加载`);
+  if (index.expired) console.log(`[doctor] found ${index.expired} expired/consumed paste(s) (not deleted; server startup will clean)`);
 
   const pastes = store.allPastes();
   for (const paste of pastes) {

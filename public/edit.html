@@ -14,6 +14,22 @@
 .editor-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 .editor-head h1{font-size:20px;font-weight:700;letter-spacing:-.2px}
 .editor-code{display:inline-block;margin-top:4px;padding:2px 8px;border-radius:7px;background:var(--info-bg);color:var(--ac);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;font-weight:600}
+.link-settings{margin:0 0 16px;padding:12px 15px;border:1px solid var(--bd);border-radius:var(--r-md);background:var(--in)}
+.link-settings summary{cursor:pointer;color:var(--txt2);font-size:13px;font-weight:600;list-style:none}
+.link-settings summary::-webkit-details-marker{display:none}
+.link-settings summary::after{content:"\25be";float:right;color:var(--txt3)}
+.link-settings[open] summary::after{content:"\25b4"}
+.ls-grid{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.ls-item{flex:1 1 220px;padding:9px 12px;border:1px solid var(--bd);border-radius:var(--r-sm);background:var(--card)}
+.ls-item span{display:block;color:var(--txt3);font-size:11px;font-weight:700;letter-spacing:.3px}
+.ls-item strong{display:block;margin-top:3px;font-size:13px;font-weight:600;word-break:break-word}
+.ls-controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.ls-controls .input{flex:1 1 240px}
+.ls-msg{margin-top:10px}
+.pw-code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:15px;font-weight:700;letter-spacing:.12em}
+@media(max-width:600px){
+  .ls-controls .btn{flex:1 1 100%;min-height:44px}
+}
 .editor-card .notice{margin-bottom:16px}
 .code-area{min-height:56vh;min-height:56dvh;font-size:13px;line-height:1.65}
 .bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px}
@@ -53,6 +69,20 @@
       </div>
     </div>
     <div class="notice">✏️ 修改下面的 HTML 代码，点击“保存”即可立即生效。原链接和编辑密钥保持不变。</div>
+    <details class="link-settings" id="linkSettings">
+      <summary>⏳ 有效期与 🔒 访问密码</summary>
+      <div class="ls-grid">
+        <div class="ls-item"><span>有效期</span><strong id="expiryText">—</strong></div>
+        <div class="ls-item"><span>访问密码</span><strong id="pwState">—</strong></div>
+      </div>
+      <div class="ls-controls">
+        <input class="input" id="pwInput" type="password" maxlength="64" placeholder="输入 6-64 位自定义密码；留空则自动生成 6 位" autocomplete="new-password" spellcheck="false">
+        <button class="btn btn-ghost" id="pwReset" type="button">🔑 生成 / 重置密码</button>
+        <button class="btn btn-ghost" id="pwOff" type="button">关闭密码</button>
+      </div>
+      <div class="notice ls-msg" id="pwMsg" hidden></div>
+      <p class="hint">重置后旧密码立即失效；新密码只显示一次。有效期在生成时确定，不能修改。</p>
+    </details>
     <div class="field">
       <label for="nm">页面名称（方便日后查找）</label>
       <input class="input" id="nm" maxlength="60" placeholder="例如：公司官网预览 / 游戏 demo" autocomplete="off">
@@ -79,11 +109,22 @@ var nm=document.getElementById("nm");
 var svb=document.getElementById("svb");
 var sizeEl=document.getElementById("size");
 var dirty=false;
+var linkInfo=null;
 function updateSize(){
   var n=0;
   try{n=new Blob([ta.value]).size}catch(e){n=ta.value.length}
   sizeEl.textContent=(n<1024?n+" B":n<1048576?(n/1024).toFixed(1)+" KB":(n/1048576).toFixed(2)+" MB")+" / 2 MB";
   sizeEl.className="size"+(n>2097152?" danger":n>1887436?" warn":"");
+}
+function fmtDate(v){try{var d=new Date(v);if(isNaN(d))return String(v);function p(n){return n<10?"0"+n:""+n}return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes())}catch(e){return String(v)}}
+function renderLinkInfo(){
+  if(!linkInfo)return;
+  var e=document.getElementById("expiryText");
+  if(linkInfo.singleUse)e.textContent="单次访问（首次打开后失效；7 天内未访问也会过期）";
+  else if(!linkInfo.expiresAt)e.textContent="永久有效";
+  else e.textContent="至 "+fmtDate(linkInfo.expiresAt)+"（到期自动删除）";
+  document.getElementById("pwState").textContent=linkInfo.passwordProtected?"已开启":"未开启";
+  document.getElementById("pwOff").style.display=linkInfo.passwordProtected?"":"none";
 }
 function markDirty(){dirty=true;updateSize()}
 ta.addEventListener("input",markDirty);
@@ -107,8 +148,18 @@ window.addEventListener("beforeunload",function(e){
   if(dirty){e.preventDefault();e.returnValue=""}
 });
 function sts(m,t){var ts=document.getElementById("ts");ts.textContent=m;ts.className="toast show"+(t?" "+t:"");setTimeout(function(){ts.className="toast"+(t?" "+t:"")},2200)}
+function copySecret(text){
+  function done(){sts("已复制","success")}
+  function fallback(){
+    var ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();
+    var ok=false;try{ok=document.execCommand("copy")}catch(e){}
+    document.body.removeChild(ta);
+    if(ok)done();else sts("复制失败，请手动选择","error");
+  }
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(done).catch(fallback);else fallback();
+}
 fetch("/api/get?code="+encodeURIComponent(code),{headers:{"X-Edit-Key":key}}).then(function(r){return r.json()}).then(function(d){
-if(d.success){ta.value=d.html;nm.value=d.name||"";if(d.name)document.title=d.name+" - 编辑";svb.disabled=false;dirty=false;updateSize()}
+if(d.success){ta.value=d.html;nm.value=d.name||"";if(d.name)document.title=d.name+" - 编辑";svb.disabled=false;dirty=false;updateSize();linkInfo=d;renderLinkInfo()}
 else{ta.value="";ta.disabled=true;sts("加载失败："+(d.error||"未知错误"),"error")}
 }).catch(function(e){ta.value="";ta.disabled=true;sts("网络错误","error")});
 svb.addEventListener("click",async function(){
@@ -120,6 +171,30 @@ if(d.success){dirty=false;sts("✅ 已保存，刷新预览页可见","success")
 else sts("保存失败："+(d.error||"未知错误"),"error");
 }catch(e){sts("网络错误","error")}
 finally{svb.disabled=false;svb.textContent=old}
+});
+document.getElementById("pwReset").addEventListener("click",function(){
+  var v=document.getElementById("pwInput").value;
+  var action=v?"set":"generate";
+  if(action==="set"&&(v.length<6||v.length>64)){sts("密码需 6-64 位","error");return}
+  var btn=this;btn.disabled=true;var old=btn.textContent;btn.textContent="处理中...";
+  var payload={code:code,key:key,action:action};
+  if(action==="set")payload.password=v;
+  fetch("/api/link/password",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)}).then(function(r){return r.json()}).then(function(d){
+    if(!d.success){sts(d.error||"操作失败","error");return}
+    linkInfo=linkInfo||{};linkInfo.passwordProtected=d.passwordProtected;renderLinkInfo();
+    var msg=document.getElementById("pwMsg");msg.hidden=false;
+    if(d.password){msg.innerHTML='✅ 新密码（仅显示一次）：<code class="pw-code">'+d.password+'</code> <button class="btn btn-ghost btn-sm" id="pwCopy" type="button">复制</button>';var c=document.getElementById("pwCopy");if(c)c.addEventListener("click",function(){copySecret(d.password)});}
+    else msg.textContent=d.passwordProtected?"✅ 自定义密码已生效":"✅ 已关闭访问密码";
+    document.getElementById("pwInput").value="";
+  }).catch(function(){sts("网络错误","error")}).finally(function(){btn.disabled=false;btn.textContent=old});
+});
+document.getElementById("pwOff").addEventListener("click",function(){
+  var btn=this;btn.disabled=true;
+  fetch("/api/link/password",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:code,key:key,action:"remove"})}).then(function(r){return r.json()}).then(function(d){
+    if(!d.success){sts(d.error||"操作失败","error");return}
+    linkInfo=linkInfo||{};linkInfo.passwordProtected=false;renderLinkInfo();
+    var msg=document.getElementById("pwMsg");msg.hidden=false;msg.textContent="✅ 已关闭访问密码";
+  }).catch(function(){sts("网络错误","error")}).finally(function(){btn.disabled=false});
 });
 })();
 </script>

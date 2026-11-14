@@ -20,6 +20,31 @@ const FETCH_TIMEOUT_MS = Number(process.env.FETCH_TIMEOUT_MS || 12000);
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 天
 const URL_FETCH_ENABLED = process.env.URL_FETCH_ENABLED !== '0';
 
+/**
+ * 链接有效期档位。
+ * - 单次：首次成功预览后立即失效；为避免长期占用空间，7 天内未访问也会过期。
+ * - 其余档位从创建时开始计时；never 表示永久。
+ * 过期记录由后台清扫任务删除，正文在最后一个引用释放后回收。
+ */
+const DAY_MS = 24 * 60 * 60 * 1000;
+const LINK_EXPIRY = Object.freeze({
+  once: Object.freeze({ ms: 7 * DAY_MS, singleUse: true }),
+  '1d': Object.freeze({ ms: DAY_MS }),
+  '7d': Object.freeze({ ms: 7 * DAY_MS }),
+  '30d': Object.freeze({ ms: 30 * DAY_MS }),
+  '1y': Object.freeze({ ms: 365 * DAY_MS }),
+  never: Object.freeze({ ms: null }),
+});
+const DEFAULT_LINK_EXPIRY = String(process.env.LINK_DEFAULT_EXPIRY || '7d').trim();
+if (!LINK_EXPIRY[DEFAULT_LINK_EXPIRY]) {
+  throw new Error('LINK_DEFAULT_EXPIRY 必须是 once/1d/7d/30d/1y/never 之一');
+}
+const LINK_SWEEP_INTERVAL_MS = Number(process.env.LINK_SWEEP_INTERVAL_MS || 60_000);
+if (!Number.isFinite(LINK_SWEEP_INTERVAL_MS) || LINK_SWEEP_INTERVAL_MS < 1000) {
+  throw new Error('LINK_SWEEP_INTERVAL_MS 必须是大于等于 1000 的整数');
+}
+const LINK_UNLOCK_TTL_MS = 12 * 60 * 60 * 1000; // 密码解锁 Cookie 有效期 12 小时
+
 if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) {
   throw new Error('PORT 必须是 1-65535 的整数');
 }
@@ -105,6 +130,7 @@ const templates = {
   settings: fs.readFileSync(path.join(PUBLIC_DIR, 'settings.html'), 'utf8'),
   recover: fs.readFileSync(path.join(PUBLIC_DIR, 'recover.html'), 'utf8'),
   notFound: fs.readFileSync(path.join(PUBLIC_DIR, '404.html'), 'utf8'),
+  lock: fs.readFileSync(path.join(PUBLIC_DIR, 'lock.html'), 'utf8'),
 };
 const avatarSvg = fs.readFileSync(path.join(PUBLIC_DIR, 'avatar.svg'), 'utf8');
 const themeCss = fs.readFileSync(path.join(PUBLIC_DIR, 'theme.css'), 'utf8');
@@ -128,6 +154,10 @@ module.exports = {
   FETCH_ALLOWED_PORTS,
   URL_FETCH_ENABLED,
   SESSION_TTL_MS,
+  LINK_EXPIRY,
+  DEFAULT_LINK_EXPIRY,
+  LINK_SWEEP_INTERVAL_MS,
+  LINK_UNLOCK_TTL_MS,
   PREVIEW_ORIGIN,
   PREVIEW_HOST,
   PREVIEW_SANDBOX,

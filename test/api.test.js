@@ -142,6 +142,7 @@ test('HTML 渲染器 API 冒烟测试', async (t) => {
       DATA_DIR: dataDir,
       BRAND_NAME: '测试渲染器',
       TRUST_PROXY: '0',
+      LINK_DEFAULT_EXPIRY: '7d',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -303,6 +304,182 @@ test('HTML 渲染器 API 冒烟测试', async (t) => {
     assert.equal(preview.text, pageB);
   });
 
+  await t.test('链接有效期与单次访问', async () => {
+    const oncePage =
+      '<html><head><title>单次链接</title></head><body>only once</body></html>';
+    const gen = await anon.post('/generate', {
+      type: 'code',
+      code: oncePage,
+      expiry: 'once',
+    });
+    assert.equal(gen.json.success, true, gen.text);
+    assert.equal(gen.json.expiry, 'once');
+    assert.equal(gen.json.singleUse, true);
+    assert.ok(gen.json.expiresAt, '单次链接应有兜底过期时间');
+
+    const first = await anon.get('/p/' + gen.json.code);
+    assert.equal(first.status, 200);
+    assert.equal(first.text, oncePage);
+
+    const second = await anon.get('/p/' + gen.json.code);
+    assert.equal(second.status, 404);
+    assert.match(second.text, /页面不存在或已过期/);
+
+    const dayPage =
+      '<html><head><title>一天链接</title></head><body>one day</body></html>';
+    const day = await anon.post('/generate', {
+      type: 'code',
+      code: dayPage,
+      expiry: '1d',
+    });
+    assert.equal(day.json.success, true, day.text);
+    assert.equal(day.json.expiry, '1d');
+    assert.equal(day.json.singleUse, false);
+    const ttl = Date.parse(day.json.expiresAt) - Date.now();
+    assert.ok(ttl > 23 * 60 * 60 * 1000 && ttl <= 24 * 60 * 60 * 1000, '1 天有效期');
+
+    const foreverPage = '<html><head><title>永久链接</title></head><body>forever</body></html>';
+    const forever = await anon.post('/generate', {
+      type: 'code',
+      code: foreverPage,
+      expiry: 'never',
+    });
+    assert.equal(forever.json.success, true, forever.text);
+    assert.equal(forever.json.expiry, 'never');
+    assert.equal(forever.json.expiresAt, null);
+
+    const dedupePage =
+      '<html><head><title>有效期去重</title></head><body>dedupe expiry</body></html>';
+    const week = await anon.post('/generate', {
+      type: 'code',
+      code: dedupePage,
+      expiry: '7d',
+    });
+    const oneDay = await anon.post('/generate', {
+      type: 'code',
+      code: dedupePage,
+      expiry: '1d',
+    });
+    assert.equal(week.json.success, true, week.text);
+    assert.equal(oneDay.json.success, true, oneDay.text);
+    assert.notEqual(oneDay.json.code, week.json.code, '不同有效期不应复用');
+    const weekAgain = await anon.post('/generate', {
+      type: 'code',
+      code: dedupePage,
+      expiry: '7d',
+    });
+    assert.equal(weekAgain.json.success, true, weekAgain.text);
+    assert.equal(weekAgain.json.reused, true);
+    assert.equal(weekAgain.json.code, week.json.code);
+
+    const invalid = await anon.post('/generate', {
+      type: 'code',
+      code: '<html><body>invalid expiry</body></html>',
+      expiry: '2d',
+    });
+    assert.equal(invalid.json.success, false);
+  });
+
+  await t.test('访问密码：生成、解锁、重置与关闭', async () => {
+    const page =
+      '<html><head><title>密码链接</title></head><body>secret</body></html>';
+    const gen = await anon.post('/generate', {
+      type: 'code',
+      code: page,
+      expiry: '7d',
+      passwordMode: 'auto',
+    });
+    assert.equal(gen.json.success, true, gen.text);
+    assert.equal(gen.json.passwordProtected, true);
+    assert.match(gen.json.password, /^\d{6}$/);
+    const code = gen.json.code;
+    const editKey = gen.json.editKey;
+
+    const locked = await anon.get('/p/' + code);
+    assert.equal(locked.status, 200);
+    assert.match(locked.text, /此链接受密码保护/);
+    assert.equal(locked.text.includes('secret'), false);
+
+    const wrong = await rawRequest(
+      'POST',
+      baseUrl + '/p/' + code,
+      { 'Content-Type': 'application/x-www-form-urlencoded' },
+      'password=' + (gen.json.password === '000000' ? '000001' : '000000')
+    );
+    assert.equal(wrong.status, 200);
+    assert.match(wrong.body.toString('utf8'), /密码错误/);
+
+    const ok = await rawRequest(
+      'POST',
+      baseUrl + '/p/' + code,
+      { 'Content-Type': 'application/x-www-form-urlencoded' },
+      'password=' + encodeURIComponent(gen.json.password)
+    );
+    assert.equal(ok.status, 303);
+    const cookie = String(ok.headers['set-cookie'][0]).split(';')[0];
+    const view = await rawGet(baseUrl + '/p/' + code, { Cookie: cookie });
+    assert.equal(view.status, 200);
+    assert.equal(view.body.toString('utf8'), page);
+
+    const reset = await anon.post('/api/link/password', {
+      code,
+      key: editKey,
+      action: 'generate',
+    });
+    assert.equal(reset.json.success, true, reset.text);
+    assert.match(reset.json.password, /^\d{6}$/);
+
+    const old = await rawGet(baseUrl + '/p/' + code, { Cookie: cookie });
+    assert.equal(old.status, 200);
+    assert.match(old.body.toString('utf8'), /此链接受密码保护/);
+
+    const ok2 = await rawRequest(
+      'POST',
+      baseUrl + '/p/' + code,
+      { 'Content-Type': 'application/x-www-form-urlencoded' },
+      'password=' + encodeURIComponent(reset.json.password)
+    );
+    assert.equal(ok2.status, 303);
+    const cookie2 = String(ok2.headers['set-cookie'][0]).split(';')[0];
+    const view2 = await rawGet(baseUrl + '/p/' + code, { Cookie: cookie2 });
+    assert.equal(view2.body.toString('utf8'), page);
+
+    const custom = await anon.post('/api/link/password', {
+      code,
+      key: editKey,
+      action: 'set',
+      password: 'my-pass-123',
+    });
+    assert.equal(custom.json.success, true, custom.text);
+    const customView = await anon.get('/p/' + code);
+    assert.match(customView.text, /此链接受密码保护/);
+    const customOk = await rawRequest(
+      'POST',
+      baseUrl + '/p/' + code,
+      { 'Content-Type': 'application/x-www-form-urlencoded' },
+      'password=my-pass-123'
+    );
+    assert.equal(customOk.status, 303);
+
+    const bad = await anon.post('/api/link/password', {
+      code,
+      key: editKey,
+      action: 'set',
+      password: '123',
+    });
+    assert.equal(bad.json.success, false);
+
+    const off = await anon.post('/api/link/password', {
+      code,
+      key: editKey,
+      action: 'remove',
+    });
+    assert.equal(off.json.success, true, off.text);
+    assert.equal(off.json.passwordProtected, false);
+    const open = await anon.get('/p/' + code);
+    assert.equal(open.text, page);
+  });
+
   const username = 'tester_' + Date.now().toString(36);
   const password = 'test-pass-123';
 
@@ -329,6 +506,18 @@ test('HTML 渲染器 API 冒烟测试', async (t) => {
 
     const my2 = await client.json('/api/my');
     assert.equal(my2.json.items[0].name, '重命名页面');
+    assert.equal(gen.json.expiry, '7d');
+    assert.ok(gen.json.expiresAt);
+    assert.equal(my2.json.items[0].passwordProtected, false);
+
+    const pw = await client.post('/api/link/password', {
+      code: gen.json.code,
+      action: 'generate',
+    });
+    assert.equal(pw.json.success, true, pw.text);
+    assert.match(pw.json.password, /^\d{6}$/);
+    const my3 = await client.json('/api/my');
+    assert.equal(my3.json.items[0].passwordProtected, true);
   });
 
   await t.test('并发生成相同内容只创建一个链接', async () => {
@@ -479,6 +668,40 @@ test('预览独立域名隔离', async (t) => {
     assert.equal(css.status, 200);
     assert.match(String(css.headers['content-type']), /text\/css/);
     assert.equal(css.headers['set-cookie'], undefined);
+  });
+
+  await t.test('预览域密码解锁可用且解锁 Cookie 限定路径', async () => {
+    const page2 =
+      '<html><head><title>预览域密码</title></head><body>preview secret</body></html>';
+    const g = await client.post('/generate', {
+      type: 'code',
+      code: page2,
+      expiry: '7d',
+      passwordMode: 'auto',
+    });
+    assert.equal(g.json.success, true, g.text);
+    const code2 = g.json.code;
+
+    const locked = await rawGet(`${baseUrl}/p/${code2}`, { Host: previewHost });
+    assert.equal(locked.status, 200);
+    assert.match(locked.body.toString('utf8'), /此链接受密码保护/);
+    assert.equal(locked.headers['set-cookie'], undefined);
+
+    const ok = await rawRequest(
+      'POST',
+      `${baseUrl}/p/${code2}`,
+      { Host: previewHost, 'Content-Type': 'application/x-www-form-urlencoded' },
+      'password=' + encodeURIComponent(g.json.password)
+    );
+    assert.equal(ok.status, 303);
+    const cookie = String(ok.headers['set-cookie'][0]);
+    assert.match(cookie, new RegExp('Path=/p/' + code2));
+    const view = await rawGet(`${baseUrl}/p/${code2}`, {
+      Host: previewHost,
+      Cookie: cookie.split(';')[0],
+    });
+    assert.equal(view.status, 200);
+    assert.equal(view.body.toString('utf8'), page2);
   });
 
   await t.test('主站账号与页面仍正常，链接指向预览域', async () => {
@@ -689,6 +912,50 @@ test('重启后从 pastes/ 重建索引', async (t) => {
   assert.equal(preview.text, page);
 });
 
+test('过期链接在启动时自动删除', async (t) => {
+  const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'html-renderer-expiry-'));
+  const port = await freePort();
+  const baseUrl = `http://127.0.0.1:${port}`;
+  const env = {
+    ...process.env,
+    PORT: String(port),
+    HOST: '127.0.0.1',
+    DATA_DIR: dataDir,
+    TRUST_PROXY: '0',
+  };
+  const start = () =>
+    spawn(process.execPath, [path.join(ROOT, 'server.js')], {
+      cwd: ROOT,
+      env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+  let child = start();
+  t.after(async () => {
+    await stopServer(child);
+    await fs.rm(dataDir, { recursive: true, force: true });
+  });
+  await waitForHealth(baseUrl);
+
+  const client = createClient(baseUrl);
+  const page = '<html><head><title>过期清理</title></head><body>expire</body></html>';
+  const gen = await client.post('/generate', { type: 'code', code: page, expiry: '1d' });
+  assert.equal(gen.json.success, true, gen.text);
+  const code = gen.json.code;
+
+  await stopServer(child);
+  const file = path.join(dataDir, 'pastes', code + '.json');
+  const record = JSON.parse(await fs.readFile(file, 'utf8'));
+  record.expiresAt = new Date(Date.now() - 1000).toISOString();
+  await fs.writeFile(file, JSON.stringify(record));
+
+  child = start();
+  await waitForHealth(baseUrl);
+
+  const preview = await client.get('/p/' + code);
+  assert.equal(preview.status, 404);
+  await assert.rejects(fs.access(file), (err) => err.code === 'ENOENT');
+});
+
 test('blob 引用计数：删除一个引用不删正文，最后一个引用才回收', async (t) => {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'html-renderer-gc-'));
   const port = await freePort();
@@ -857,6 +1124,18 @@ test('账号安全：改密、退出所有设备、恢复码与注销', async (t
     assert.equal(gen.json.success, true, gen.text);
     const code = gen.json.code;
 
+    // 已消费的单次链接不在“我的页面”列表里，注销时也必须删除其记录。
+    const oncePage =
+      '<html><head><title>注销单次</title></head><body>consume me</body></html>';
+    const once = await a.post('/generate', {
+      type: 'code',
+      code: oncePage,
+      expiry: 'once',
+    });
+    assert.equal(once.json.success, true, once.text);
+    const consumed = await a.get('/p/' + once.json.code);
+    assert.equal(consumed.status, 200);
+
     const deleted = await a.post('/api/account/delete', {
       password: recoveredPassword,
       confirmUsername: username,
@@ -867,6 +1146,10 @@ test('账号安全：改密、退出所有设备、恢复码与注销', async (t
     assert.equal(me.json.success, false);
     const preview = await a.get('/p/' + code);
     assert.equal(preview.status, 404);
+    await assert.rejects(
+      fs.access(path.join(dataDir, 'pastes', once.json.code + '.json')),
+      (err) => err.code === 'ENOENT'
+    );
     const login = await a.post('/api/login', { username, password: recoveredPassword });
     assert.equal(login.json.success, false);
 

@@ -16,6 +16,66 @@ const { fetchHtml } = require('./fetch-html');
 const CODE_RE = /^[A-Za-z0-9]{4,32}$/;
 const USERNAME_RE = /^[\p{L}\p{N}_-]{3,32}$/u;
 
+const EXPIRY_KEYS = new Set(Object.keys(config.LINK_EXPIRY));
+const PASSWORD_MIN = 6;
+const PASSWORD_MAX = 64;
+
+function normalizeExpiry(raw) {
+  if (raw === undefined || raw === null || raw === '') return config.DEFAULT_LINK_EXPIRY;
+  const key = String(raw);
+  return EXPIRY_KEYS.has(key) ? key : null;
+}
+
+/** 系统生成的访问密码：6 位数字，允许前导零。 */
+function generateLinkPassword() {
+  return String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
+}
+
+/** 解析 passwordMode/password；返回 { mode, plain } 或 { error }。 */
+function parsePasswordInput(body) {
+  let mode = body.passwordMode;
+  if (mode === undefined || mode === null || mode === '') {
+    mode = body.password ? 'custom' : 'none';
+  }
+  mode = String(mode);
+  if (mode === 'none') return { mode: 'none', plain: null };
+  if (mode === 'auto') return { mode: 'auto', plain: generateLinkPassword() };
+  if (mode !== 'custom') return { error: '不支持的密码模式' };
+  const plain = String(body.password || '').trim();
+  if (plain.length < PASSWORD_MIN || plain.length > PASSWORD_MAX) {
+    return { error: `访问密码需 ${PASSWORD_MIN}-${PASSWORD_MAX} 位` };
+  }
+  if (/[\u0000-\u001f\u007f]/.test(plain)) return { error: '访问密码包含非法字符' };
+  return { mode: 'custom', plain };
+}
+
+/** 链接返回给前端的公开字段（绝不包含密码哈希）。 */
+function publicPasteMeta(paste) {
+  return {
+    expiry: paste.expiry || 'never',
+    expiresAt: paste.expiresAt || null,
+    singleUse: !!paste.singleUse,
+    consumedAt: paste.consumedAt || null,
+    views: Number(paste.views || 0),
+    passwordProtected: !!paste.passwordHash,
+  };
+}
+
+/**
+ * 去重是否可复用：只有未设密码、非单次、有效期档位相同，且剩余时间不短于
+ * 该档位的链接才复用。5 分钟容差用于覆盖“刚创建、剩余时间略短于整档”的情况。
+ */
+function canReusePaste(paste, expiry, now) {
+  if (!store.isAvailable(paste)) return false;
+  if (paste.singleUse || paste.passwordHash) return false;
+  if ((paste.expiry || 'never') !== expiry) return false;
+  const tier = config.LINK_EXPIRY[expiry];
+  if (!tier || tier.ms === null) return true;
+  const remaining = paste.expiresAt ? Date.parse(paste.expiresAt) - now : Infinity;
+  if (!Number.isFinite(remaining)) return false;
+  return remaining >= tier.ms - 5 * 60 * 1000;
+}
+
 function keyEquals(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string') return false;
   const ba = Buffer.from(a);
@@ -196,7 +256,8 @@ async function handleDeleteAccount(req, res, user) {
   }
   try {
     await store.withLock(async () => {
-      const pages = store.listUserPastes(user.id);
+      // 必须包含已过期/已消费的记录，否则注销后这些元数据会残留在 pastes/。
+      const pages = store.allPastes().filter((paste) => paste.userId === user.id);
       for (const paste of pages) {
         await store.deletePasteLocked(paste.code);
       }
@@ -224,9 +285,18 @@ async function handleMy(req, res, url, user) {
     type: p.type || 'code',
     sourceUrl: p.sourceUrl || null,
     hash: p.hash,
+    ...publicPasteMeta(p),
   }));
   items.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
-  const totalBytes = items.reduce((sum, item) => sum + item.size, 0);
+  // 同一 hash 的多个链接只占一份正文，统计时按 hash 去重。
+  const seenHashes = new Set();
+  let totalBytes = 0;
+  for (const item of items) {
+    const key = item.hash || 'code:' + item.code;
+    if (seenHashes.has(key)) continue;
+    seenHashes.add(key);
+    totalBytes += Number(item.size || 0);
+  }
   return sendJson(res, {
     success: true,
     total: items.length,
@@ -280,6 +350,11 @@ async function handleGenerate(req, res, user, anonId) {
     return sendJson(res, { success: false, error: '不支持的类型' });
   }
 
+  const expiry = normalizeExpiry(body.expiry);
+  if (!expiry) return sendJson(res, { success: false, error: '有效期选项无效' });
+  const password = parsePasswordInput(body);
+  if (password.error) return sendJson(res, { success: false, error: password.error });
+
   let html;
   if (type === 'url') {
     if (!config.URL_FETCH_ENABLED) {
@@ -307,46 +382,61 @@ async function handleGenerate(req, res, user, anonId) {
   const derivedName =
     explicitName || store.extractTitle(html) || (type === 'url' ? store.urlHost(body.url) : '');
 
+  const tier = config.LINK_EXPIRY[expiry];
+  const now = Date.now();
+  const expiresAt = tier.ms === null ? null : new Date(now + tier.ms).toISOString();
+
+  let passwordInfo = null;
+  if (password.plain) {
+    try {
+      passwordInfo = await auth.hashLinkPassword(password.plain);
+    } catch (e) {
+      console.error('[generate] hash password failed', e);
+      return sendJson(res, { success: false, error: '生成失败，请重试' });
+    }
+  }
+
+  // 密码链接与单次链接不复用；其余按剩余有效期判断，避免复用“快过期”的旧链接。
+  function reusable(list) {
+    if (password.plain || expiry === 'once') return null;
+    return list.find((item) => canReusePaste(item, expiry, now)) || null;
+  }
+
+  function reusedResponse(paste) {
+    return sendJson(res, {
+      success: true,
+      code: paste.code,
+      editKey: paste.editKey,
+      name: paste.name || '',
+      reused: true,
+      createdAt: paste.createdAt,
+      ...publicPasteMeta(paste),
+    });
+  }
+
   try {
-    // SHA-256 去重：同一登录用户相同内容直接复用原链接
     if (user) {
-      let existing = store.findUserPasteByHash(user.id, hash);
+      let existing = reusable(store.findUserPastesByHash(user.id, hash));
       if (existing) {
         if (explicitName) existing = await applyName(existing, explicitName);
-        return sendJson(res, {
-          success: true,
-          code: existing.code,
-          editKey: existing.editKey,
-          name: existing.name || '',
-          reused: true,
-          createdAt: existing.createdAt,
-        });
+        return reusedResponse(existing);
       }
     } else {
-      const existingAnon = store.findAnonPaste(anonId, hash);
-      if (existingAnon) {
-        return sendJson(res, {
-          success: true,
-          code: existingAnon.code,
-          editKey: existingAnon.editKey,
-          name: existingAnon.name || '',
-          reused: true,
-          createdAt: existingAnon.createdAt,
-        });
-      }
+      const existing = reusable(store.findAnonPastesByHash(anonId, hash));
+      if (existing) return reusedResponse(existing);
     }
 
     const created = await store.withLock(async () => {
       // 锁内二次检查，避免并发重复生成
       if (user) {
-        let existing = store.findUserPasteByHash(user.id, hash);
+        let existing = reusable(store.findUserPastesByHash(user.id, hash));
         if (existing) {
           if (explicitName) existing = await applyNameLocked(existing, explicitName);
           return { reused: existing };
         }
       } else {
-        const existingAnon = store.findAnonPaste(anonId, hash);
-        if (existingAnon) return { reused: existingAnon };
+        const existing = reusable(store.findAnonPastesByHash(anonId, hash));
+        if (existing) return { reused: existing };
       }
       const code = await store.uniqueCode();
       const editKey = store.newCode(16);
@@ -361,26 +451,26 @@ async function handleGenerate(req, res, user, anonId) {
         type,
         sourceUrl: type === 'url' ? String(body.url) : undefined,
         size,
+        expiry,
+        expiresAt,
+        singleUse: !!tier.singleUse,
+        passwordHash: passwordInfo ? passwordInfo.hash : null,
+        passwordSalt: passwordInfo ? passwordInfo.salt : null,
+        passwordUpdatedAt: passwordInfo ? new Date().toISOString() : null,
       });
       return { paste };
     });
 
-    if (created.reused) {
-      return sendJson(res, {
-        success: true,
-        code: created.reused.code,
-        editKey: created.reused.editKey,
-        name: created.reused.name || '',
-        reused: true,
-        createdAt: created.reused.createdAt,
-      });
-    }
+    if (created.reused) return reusedResponse(created.reused);
     return sendJson(res, {
       success: true,
       code: created.paste.code,
       editKey: created.paste.editKey,
       name: created.paste.name || '',
       reused: false,
+      createdAt: created.paste.createdAt,
+      ...publicPasteMeta(created.paste),
+      password: password.mode === 'auto' ? password.plain : undefined,
     });
   } catch (e) {
     console.error('[generate] failed', e);
@@ -401,7 +491,12 @@ async function handleGet(req, res, url) {
     console.error('[get] blob missing', code, paste.hash);
     return sendJson(res, { success: false, error: '页面内容不可用，请从备份恢复' });
   }
-  return sendJson(res, { success: true, html, name: paste.name || '' });
+  return sendJson(res, {
+    success: true,
+    html,
+    name: paste.name || '',
+    ...publicPasteMeta(paste),
+  });
 }
 
 async function handleSave(req, res) {
@@ -469,6 +564,68 @@ async function handleRename(req, res, user) {
   }
 }
 
+/** 设置/重置/移除链接访问密码：登录所有者或持有 editKey 均可操作。 */
+async function handleLinkPassword(req, res, user) {
+  if (rateLimited(req, 'link-password', 60, 60 * 60 * 1000)) {
+    return sendJson(res, { success: false, error: '操作太频繁，请稍后再试' });
+  }
+  let body;
+  try {
+    body = await readJson(req);
+  } catch (e) {
+    return sendBodyError(res, req, e);
+  }
+  const code = String(body.code || '');
+  const key = String(req.headers['x-edit-key'] || body.key || '');
+  if (!CODE_RE.test(code)) return sendJson(res, { success: false, error: '页面不存在或已过期' });
+  const paste = await store.readPaste(code);
+  if (!paste) return sendJson(res, { success: false, error: '页面不存在或已过期' });
+
+  const byOwner = !!(user && paste.userId && paste.userId === user.id);
+  const byKey = !!key && keyEquals(key, paste.editKey);
+  if (!byOwner && !byKey) return sendJson(res, { success: false, error: '无权修改该链接' });
+
+  const action = String(body.action || '');
+  let plain = null;
+  if (action === 'generate') {
+    plain = generateLinkPassword();
+  } else if (action === 'set') {
+    const parsed = parsePasswordInput({ passwordMode: 'custom', password: body.password });
+    if (parsed.error) return sendJson(res, { success: false, error: parsed.error });
+    plain = parsed.plain;
+  } else if (action !== 'remove') {
+    return sendJson(res, { success: false, error: '不支持的密码操作' });
+  }
+
+  let info = null;
+  if (plain) {
+    try {
+      info = await auth.hashLinkPassword(plain);
+    } catch (e) {
+      console.error('[link-password] hash failed', e);
+      return sendJson(res, { success: false, error: '操作失败，请重试' });
+    }
+  }
+
+  try {
+    const updated = await store.withLock(() =>
+      store.updatePasteLocked(code, {
+        passwordHash: info ? info.hash : null,
+        passwordSalt: info ? info.salt : null,
+        passwordUpdatedAt: info ? new Date().toISOString() : null,
+      })
+    );
+    return sendJson(res, {
+      success: true,
+      passwordProtected: !!updated.passwordHash,
+      password: action === 'generate' ? plain : undefined,
+    });
+  } catch (e) {
+    console.error('[link-password] failed', e);
+    return sendJson(res, { success: false, error: '操作失败，请重试' });
+  }
+}
+
 module.exports = {
   handleRegister,
   handleLogin,
@@ -484,4 +641,5 @@ module.exports = {
   handleGet,
   handleSave,
   handleRename,
+  handleLinkPassword,
 };

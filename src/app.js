@@ -4,8 +4,8 @@
  * HTTP 路由：页面、预览、编辑页与 JSON API。
  *
  * 安全边界：
- * - 配置 PREVIEW_ORIGIN 后，预览域名只提供 GET/HEAD /p/:code；
- *   不读会话、不写 Cookie、不暴露 API。主站 /p/:code 只做 302 跳转。
+ * - 配置 PREVIEW_ORIGIN 后，预览域名只提供 GET/HEAD /p/:code 与密码解锁 POST /p/:code；
+ *   不读账号会话、不暴露 API，仅密码链接写路径限定的短期解锁 Cookie。主站 /p/:code 只做 302 跳转。
  * - 未配置 PREVIEW_ORIGIN 时，预览页默认带 CSP sandbox（不透明源），
  *   避免预览页以主站同源身份读取 /api/my 等账号接口。
  */
@@ -13,7 +13,8 @@
 const http = require('node:http');
 const crypto = require('node:crypto');
 const config = require('./config');
-const { sendJson, sendText, sendHtml, sendRedirect, sameOrigin } = require('./http');
+const { sendJson, sendText, sendHtml, sendRedirect, sameOrigin, readForm } = require('./http');
+const { rateLimited } = require('./rate-limit');
 const auth = require('./auth');
 const handlers = require('./handlers');
 const store = require('./store');
@@ -89,35 +90,96 @@ function serveStaticAsset(res, pathname) {
   return false;
 }
 
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (ch) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  })[ch]);
+}
+
+/** 密码解锁页：不套预览 sandbox，保证表单可正常提交。 */
+function sendLockPage(res, code, error = '', status = 200) {
+  const errorBlock = error
+    ? '<div class="notice error" role="alert">' + escapeHtml(error) + '</div>'
+    : '';
+  return sendHtml(
+    res,
+    config.render(config.templates.lock, renderVars({ CODE: code, ERROR_BLOCK: errorBlock })),
+    {
+      'Content-Security-Policy': CSP_PAGE,
+      'X-Robots-Tag': 'noindex, nofollow',
+    },
+    status
+  );
+}
+
 async function servePreview(req, res, code, preview = false) {
-  const paste = await store.readPaste(code);
-  if (!paste) return sendNotFound(req, res, preview);
+  let paste = store.getPaste(code);
+  if (!store.isAvailable(paste)) return sendNotFound(req, res, preview);
+
+  if (paste.passwordHash && !auth.hasUnlock(req, paste)) {
+    return sendLockPage(res, code);
+  }
 
   // hash 已知时先判断缓存，避免 304 还去读 2MB 正文。
   const hashEtag = paste.hash ? '"' + paste.hash + '"' : '';
-  if (hashEtag && String(req.headers['if-none-match'] || '').includes(hashEtag)) {
+  if (!paste.singleUse && hashEtag && String(req.headers['if-none-match'] || '').includes(hashEtag)) {
     res.writeHead(304, { ETag: hashEtag, 'Cache-Control': 'no-cache' });
     return res.end();
   }
 
+  // 先确认正文可读，再原子消耗单次链接：避免 blob 异常时把链接白烧掉。
+  // HEAD 只用于探测，不消耗链接。
   const html = await store.pasteContent(paste);
   if (html === null) {
     console.error('[preview] blob missing', code, paste.hash);
     return sendText(res, '页面内容不可用，请从备份恢复', 500);
   }
+  if (paste.singleUse && req.method !== 'HEAD') {
+    const consumed = await store.consumeSingleUse(code);
+    if (!consumed) return sendNotFound(req, res, preview);
+  }
   const etag = hashEtag || '"' + store.sha256(html) + '"';
-  return sendHtml(res, html, {
+  const headers = {
     'Content-Security-Policy': CSP_PREVIEW,
     'Referrer-Policy': 'no-referrer',
     'X-Frame-Options': 'DENY',
     'X-Robots-Tag': 'noindex, nofollow',
-    'Cache-Control': 'no-cache',
+    'Cache-Control': paste.singleUse ? 'no-store' : 'no-cache',
     ETag: etag,
-  });
+  };
+  return sendHtml(res, html, headers);
+}
+
+/** 处理密码解锁表单：校验通过后写 HttpOnly 短期 Cookie，再 303 回预览页。 */
+async function handleUnlock(req, res, code, preview = false) {
+  if (rateLimited(req, 'unlock:' + code, 8, 10 * 60 * 1000)) {
+    return sendLockPage(res, code, '尝试次数过多，请 10 分钟后再试', 429);
+  }
+  let form;
+  try {
+    form = await readForm(req, 4096);
+  } catch {
+    return sendLockPage(res, code, '请求格式错误', 400);
+  }
+  const paste = store.getPaste(code);
+  if (!store.isAvailable(paste)) return sendNotFound(req, res, preview);
+  if (!paste.passwordHash) return sendRedirect(res, '/p/' + code, 303);
+
+  const password = String(form.get('password') || '');
+  const ok = await auth.verifyLinkPassword(paste, password);
+  if (!ok) return sendLockPage(res, code, '密码错误，请重试');
+
+  const token = auth.issueUnlockToken(code, paste.passwordHash);
+  res.setHeader('Set-Cookie', auth.unlockCookie(req, code, token));
+  return sendRedirect(res, '/p/' + code, 303);
 }
 
 function renderVars(extra = {}) {
-  return { BRAND: config.BRAND, PREVIEW_ORIGIN: config.PREVIEW_ORIGIN, ...extra };
+  return { BRAND: config.BRAND, PREVIEW_ORIGIN: config.PREVIEW_ORIGIN, DEFAULT_EXPIRY: config.DEFAULT_LINK_EXPIRY, ...extra };
 }
 
 function createServer() {
@@ -140,6 +202,13 @@ function createServer() {
       if (isPreviewHost(req)) {
         if (isGet && previewMatch) {
           return servePreview(req, res, previewMatch[1], true);
+        }
+        // 预览域只额外接受“解锁密码”这一种 POST，不暴露任何账号或写入 API。
+        if (req.method === 'POST' && previewMatch) {
+          if (!sameOrigin(req)) {
+            return sendJson(res, { success: false, error: '非法请求来源' }, 403);
+          }
+          return handleUnlock(req, res, previewMatch[1], true);
         }
         if (isGet) return sendNotFound(req, res, true);
         return sendText(res, 'Not Found', 404);
@@ -207,6 +276,16 @@ function createServer() {
         if (!sameOrigin(req)) {
           return sendJson(res, { success: false, error: '非法请求来源' }, 403);
         }
+        if (previewMatch) {
+          if (config.PREVIEW_ORIGIN) {
+            return sendRedirect(
+              res,
+              config.PREVIEW_ORIGIN + '/p/' + encodeURIComponent(previewMatch[1]),
+              303
+            );
+          }
+          return handleUnlock(req, res, previewMatch[1], false);
+        }
         if (pathname === '/generate') {
           let aid = auth.anonIdFrom(req);
           if (!aid) {
@@ -240,6 +319,9 @@ function createServer() {
         }
         if (pathname === '/api/rename') {
           return handlers.handleRename(req, res, await auth.currentUser(req));
+        }
+        if (pathname === '/api/link/password') {
+          return handlers.handleLinkPassword(req, res, await auth.currentUser(req));
         }
         return sendJson(res, { success: false, error: 'Not Found' }, 404);
       }
