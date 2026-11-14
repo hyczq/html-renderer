@@ -171,6 +171,11 @@ test('HTML 渲染器 API 冒烟测试', async (t) => {
     assert.match(home.text, /viewport-fit=cover/);
     assert.match(home.text, /@media\(max-width:600px\)/);
 
+    // 有效期与访问密码在点击生成后弹出的设置弹窗中，而不是首页表单内。
+    assert.match(home.text, /id="genModal"/);
+    assert.match(home.text, /id="genConfirm"/);
+    assert.equal((home.text.match(/id="expiryChips"/g) || []).length, 1);
+
     for (const page of ['/login', '/my', '/settings', '/recover']) {
       const res = await client.get(page);
       assert.equal(res.status, 200, page);

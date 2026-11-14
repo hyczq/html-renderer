@@ -57,6 +57,12 @@
 .switch input{width:16px;height:16px;accent-color:var(--ac)}
 .pw-mode{width:auto;min-width:172px;padding:9px 30px 9px 12px;font-size:12.5px}
 .pw-custom{width:auto;min-width:172px;padding:9px 12px;font-size:12.5px}
+.gen-modal-card{max-width:520px;max-height:calc(100vh - 40px);overflow:auto}
+.modal-options{margin:16px 0 0;padding:12px 14px}
+#genModal [hidden]{display:none!important}
+#genModal .modal-actions{margin-top:18px}
+#genModalError{margin-top:12px}
+#genModal .modal-actions .btn{min-width:116px}
 .pw-code{display:inline-block;padding:2px 10px;border-radius:7px;background:var(--info-bg);color:var(--ac-text);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:16px;font-weight:700;letter-spacing:.18em}
 @media(max-width:600px){
   .opt-row{flex-direction:column;gap:7px}
@@ -139,7 +145,18 @@
       <input class="input" id="pageName" maxlength="60" placeholder="例如：公司官网预览 / 游戏 demo，方便日后查找" autocomplete="off">
     </div>
 
-    <div class="link-options">
+    <button class="btn btn-primary btn-block" id="genBtn">🚀 生成链接</button>
+    <p class="hint">点击生成后可设置有效期和访问密码 · 相同内容自动复用，不重复存储 · Ctrl/⌘ + Enter 快速生成</p>
+    <div class="result" id="genResult" role="status" aria-live="polite"><div class="result-inner"></div></div>
+  </main>
+</div>
+
+<div class="modal" id="genModal" role="dialog" aria-modal="true" aria-labelledby="genModalTitle" aria-describedby="genModalDesc">
+  <div class="modal-card gen-modal-card">
+    <div class="modal-title" id="genModalTitle">🚀 生成链接</div>
+    <p class="modal-desc" id="genModalDesc">选择有效期和访问密码，确认后生成。</p>
+    <div class="notice error" id="genModalError" role="alert" hidden></div>
+    <div class="link-options modal-options">
       <div class="opt-row">
         <span class="opt-label">⏳ 有效期</span>
         <div class="chips" id="expiryChips" role="radiogroup" aria-label="链接有效期">
@@ -165,11 +182,11 @@
       </div>
       <p class="hint" id="expiryHint">默认 7 天，过期后平台自动删除且无法恢复。</p>
     </div>
-
-    <button class="btn btn-primary btn-block" id="genBtn">🚀 生成链接</button>
-    <p class="hint">登录后自动保存历史记录；相同内容自动复用，不重复存储 · Ctrl/⌘ + Enter 快速生成</p>
-    <div class="result" id="genResult" role="status" aria-live="polite"><div class="result-inner"></div></div>
-  </main>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="genCancel" type="button">取消</button>
+      <button class="btn btn-primary" id="genConfirm" type="button">🚀 生成链接</button>
+    </div>
+  </div>
 </div>
 <script>
 (function(){
@@ -179,6 +196,7 @@ var done=function(){var o=btn.textContent;btn.textContent="已复制!";setTimeou
 if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done).catch(function(){fa()})}else{fa()}
 function fa(){var ta=document.createElement("textarea");ta.value=txt;ta.style.position="fixed";ta.style.top="0";ta.style.left="0";ta.style.opacity="0";document.body.appendChild(ta);ta.focus();ta.select();var ok=false;try{ok=document.execCommand("copy")}catch(e){}document.body.removeChild(ta);if(ok)done();else prompt("请手动复制：",txt)}
 }
+var pendingPayload=null, genBusy=false;
 var tabs=document.querySelectorAll(".tb");
 var pns={url:document.getElementById("p-url"),code:document.getElementById("p-code"),upload:document.getElementById("p-upload")};
 var curTab="url";
@@ -227,6 +245,12 @@ if(data.password)lines.push("访问密码："+data.password);
 cp(lines.join("\n"),this);
 });
 }
+function showGenError(msg){
+var el=document.getElementById("genModalError");
+if(!el)return;
+if(!msg){el.hidden=true;el.textContent="";return}
+el.hidden=false;el.textContent=msg;
+}
 function buildOptions(){
 var o={expiry:curExpiry};
 var t=document.getElementById("pwToggle");
@@ -235,15 +259,32 @@ var mode=document.getElementById("pwMode").value;
 o.passwordMode=mode;
 if(mode==="custom"){
 var v=document.getElementById("pwCustom").value;
-if(v.length<6||v.length>64){sr(document.getElementById("genResult"),"访问密码需 6-64 位",true);return null}
+if(v.length<6||v.length>64){showGenError("访问密码需 6-64 位");return null}
 o.password=v;
 }
 return o;
 }
+function openGenModal(payload){
+pendingPayload=payload;
+showGenError("");
+var modal=document.getElementById("genModal");
+if(!modal){return}
+modal.classList.add("show");
+document.body.style.overflow="hidden";
+setTimeout(function(){
+var active=document.querySelector("#expiryChips .chip.active");
+if(active&&active.focus)active.focus();
+},50);
+}
+function closeGenModal(force){
+if(genBusy&&!force)return;
+var modal=document.getElementById("genModal");
+if(modal)modal.classList.remove("show");
+document.body.style.overflow="";
+pendingPayload=null;
+}
 function submitGenerate(payload){
-var o=buildOptions();
-if(!o)return;
-gl(Object.assign({},payload,o),document.getElementById("genResult"));
+openGenModal(payload);
 }
 async function gl(payload,el){
 el.classList.remove("show");
@@ -255,8 +296,9 @@ if(btn){btn.disabled=true;btn.dataset.old=btn.textContent;btn.textContent="⏳ �
 try{
 var r=await fetch("/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
 var d=await r.json();
-if(d.success)sr(el,d);else sr(el,d.error||"生成失败",true);
-}catch(e){sr(el,"网络错误，请重试",true)}
+if(d.success){sr(el,d);return ""}
+var msg=d.error||"生成失败";sr(el,msg,true);return msg;
+}catch(e){sr(el,"网络错误，请重试",true);return "网络错误，请重试"}
 finally{
 if(btn){btn.disabled=false;btn.textContent=btn.dataset.old||"🚀 生成链接"}
 }
@@ -322,6 +364,28 @@ rd.onload=function(ev){submitGenerate({type:"code",code:ev.target.result,name:nm
 rd.onerror=function(){sr(document.getElementById("genResult"),"文件读取失败",true)};
 rd.readAsText(sf2);
 }
+});
+document.getElementById("genCancel").addEventListener("click",function(){closeGenModal()});
+document.getElementById("genModal").addEventListener("click",function(e){if(e.target===this)closeGenModal()});
+document.getElementById("genConfirm").addEventListener("click",async function(){
+if(!pendingPayload||genBusy)return;
+showGenError("");
+var opts=buildOptions();
+if(!opts)return;
+var btn=this;genBusy=true;btn.disabled=true;var old=btn.textContent;btn.textContent="⏳ 生成中...";
+var payload=Object.assign({},pendingPayload,opts);
+var msg="";
+try{msg=await gl(payload,document.getElementById("genResult"))}catch(e){msg="网络错误，请重试"}
+genBusy=false;btn.disabled=false;btn.textContent=old;
+if(msg){showGenError(msg);return}
+closeGenModal(true);
+try{document.getElementById("genResult").scrollIntoView({behavior:"smooth",block:"nearest"})}catch(e){}
+});
+document.getElementById("pwCustom").addEventListener("keydown",function(e){
+if(e.key==="Enter"){e.preventDefault();document.getElementById("genConfirm").click()}
+});
+document.addEventListener("keydown",function(e){
+if(e.key==="Escape"&&document.getElementById("genModal").classList.contains("show")){e.preventDefault();closeGenModal();}
 });
 var dz=document.getElementById("dz"),fi=document.getElementById("fi"),fnn=document.getElementById("fn");
 dz.addEventListener("click",function(){fi.click()});
